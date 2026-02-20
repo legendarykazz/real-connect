@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
     LayoutDashboard, Users, FileText, Settings,
     Search, Bell, ChevronDown, CheckCircle2,
-    XCircle, MoreVertical, ShieldCheck, MapPin
+    XCircle, MoreVertical, ShieldCheck, MapPin, Menu, X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -14,6 +14,7 @@ const AdminDashboard = () => {
     const [showPostForm, setShowPostForm] = useState(false);
     const [showAgencyForm, setShowAgencyForm] = useState(false);
     const [editingAgencyId, setEditingAgencyId] = useState(null);
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
     const [agencyFormData, setAgencyFormData] = useState({
         name: '',
@@ -81,18 +82,29 @@ const AdminDashboard = () => {
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans text-brand-dark">
 
+            {/* Sidebar Overlay */}
+            {isMobileSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                />
+            )}
+
             {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
-                <div className="h-20 flex items-center px-6 border-b border-gray-100">
-                    <Link to="/">
+            <aside className={`fixed md:sticky top-0 left-0 h-screen w-64 bg-white border-r border-gray-200 flex-col z-50 transform transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 flex`}>
+                <div className="h-20 flex items-center justify-between px-6 border-b border-gray-100">
+                    <Link to="/" className="flex items-center">
                         <img src="/logo.png" alt="RealConnect" className="h-8 w-auto" />
+                        <span className="ml-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Admin</span>
                     </Link>
-                    <span className="ml-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Admin</span>
+                    <button onClick={() => setIsMobileSidebarOpen(false)} className="md:hidden text-gray-400 hover:text-gray-600">
+                        <X className="w-6 h-6" />
+                    </button>
                 </div>
 
-                <nav className="flex-1 px-4 py-8 space-y-2">
+                <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto">
                     <button
-                        onClick={() => setActiveTab('listings')}
+                        onClick={() => { setActiveTab('listings'); setIsMobileSidebarOpen(false); }}
                         className={`w-full flex items-center px-4 py-3 rounded-xl transition-colors ${activeTab === 'listings' ? 'bg-brand-green/10 text-brand-green font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}
                     >
                         <FileText className="w-5 h-5 mr-3" />
@@ -104,7 +116,7 @@ const AdminDashboard = () => {
                         )}
                     </button>
                     <button
-                        onClick={() => setActiveTab('agencies')}
+                        onClick={() => { setActiveTab('agencies'); setIsMobileSidebarOpen(false); }}
                         className={`w-full flex items-center px-4 py-3 rounded-xl transition-colors ${activeTab === 'agencies' ? 'bg-brand-green/10 text-brand-green font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}
                     >
                         <Users className="w-5 h-5 mr-3" />
@@ -133,12 +145,23 @@ const AdminDashboard = () => {
             <main className="flex-1 flex flex-col h-screen overflow-hidden">
 
                 {/* Topbar */}
-                <header className="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 shrink-0">
-                    <div className="flex items-center bg-gray-100 rounded-full px-4 py-2 w-96">
-                        <Search className="w-5 h-5 text-gray-400" />
-                        <input type="text" placeholder="Search properties, users, IDs..." className="bg-transparent border-none outline-none ml-2 w-full text-sm" />
+                <header className="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-8 shrink-0">
+                    <div className="flex items-center flex-1">
+                        <button
+                            onClick={() => setIsMobileSidebarOpen(true)}
+                            className="mr-4 p-2 -ml-2 text-gray-500 hover:text-brand-dark md:hidden transition-colors rounded-lg hover:bg-gray-100"
+                        >
+                            <Menu className="w-6 h-6" />
+                        </button>
+                        <div className="flex items-center bg-gray-100 rounded-full px-4 py-2 w-full max-w-md hidden sm:flex">
+                            <Search className="w-5 h-5 text-gray-400" />
+                            <input type="text" placeholder="Search properties, users, IDs..." className="bg-transparent border-none outline-none ml-2 w-full text-sm" />
+                        </div>
                     </div>
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2 md:space-x-4">
+                        <button className="sm:hidden relative p-2 text-gray-400 hover:text-brand-dark transition-colors">
+                            <Search className="w-6 h-6" />
+                        </button>
                         <button className="relative p-2 text-gray-400 hover:text-brand-dark transition-colors">
                             <Bell className="w-6 h-6" />
                             <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
@@ -319,8 +342,8 @@ const AdminDashboard = () => {
 
                     {/* --- LISTINGS VIEW --- */}
                     {activeTab === 'listings' && (
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                            <table className="w-full text-left border-collapse">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden overflow-x-auto w-full">
+                            <table className="w-full text-left border-collapse min-w-[800px]">
                                 <thead>
                                     <tr className="bg-gray-50 text-gray-500 text-sm uppercase tracking-wider border-b border-gray-200">
                                         <th className="px-6 py-4 font-semibold">Property</th>
@@ -388,8 +411,8 @@ const AdminDashboard = () => {
                                     </form>
                                 </div>
                             )}
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                                <table className="w-full text-left border-collapse">
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden overflow-x-auto w-full">
+                                <table className="w-full text-left border-collapse min-w-[800px]">
                                     <thead>
                                         <tr className="bg-gray-50 text-gray-500 text-sm uppercase tracking-wider border-b border-gray-200">
                                             <th className="px-6 py-4 font-semibold">Agency Name</th>
