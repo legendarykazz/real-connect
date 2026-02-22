@@ -10,9 +10,12 @@ import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 // -------------------------------------------------------
-// SET YOUR ADMIN EMAIL HERE — only this email can access /admin
+// ADMIN EMAILS — only these emails can access /admin
 // -------------------------------------------------------
-const ADMIN_EMAIL = 'amjustsam28@gmail.com';
+const ADMIN_EMAILS = [
+  'amjustsam28@gmail.com',
+  'zephaniahmusa99@gmail.com',
+];
 
 // Protected route: only logged-in users can access
 const ProtectedRoute = ({ children }) => {
@@ -22,12 +25,12 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// Admin-only route: must be logged in AND have the admin email
+// Admin-only route: must be logged in AND have an admin email
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.email !== ADMIN_EMAIL) {
+  if (!ADMIN_EMAILS.includes(user.email)) {
     // Logged in but not the admin — show access denied
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4 font-sans">
