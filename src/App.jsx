@@ -12,7 +12,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 // -------------------------------------------------------
 // SET YOUR ADMIN EMAIL HERE — only this email can access /admin
 // -------------------------------------------------------
-const ADMIN_EMAIL = 'realconnectng1@gmail.com';
+const ADMIN_EMAIL = 'amjustsam28@gmail.com';
 
 // Protected route: only logged-in users can access
 const ProtectedRoute = ({ children }) => {
