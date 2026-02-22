@@ -98,7 +98,9 @@ const ImageDropZone = ({ images, setImages }) => {
 const ListProperty = () => {
     const { user } = useAuth();
     const [isSubmitted, setIsSubmitted] = useState(false);
-    const [images, setImages] = useState([]); // [{file, preview, name}]
+    const [images, setImages] = useState([]); // [{file, preview, name}] — max 4
+    const [docs, setDocs] = useState([]);     // [{file, name, size}] — max 2
+    const [videos, setVideos] = useState([]); // [{file, preview, name}] — max 2
     const [formData, setFormData] = useState({
         firstName: '', lastName: '', email: '', phone: '',
         propertyType: 'Residential', location: '', size: '', price: '',
@@ -122,32 +124,26 @@ const ListProperty = () => {
 
         setLoading(true);
         setError(null);
-        let imageUrl = null;
+
+        const uploadFile = async (file, folder) => {
+            const ext = file.name.split('.').pop();
+            const path = `${user.id}/${folder}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+            const { error } = await supabase.storage.from('property-images').upload(path, file, { upsert: true });
+            if (error) throw new Error('Upload failed: ' + error.message);
+            return supabase.storage.from('property-images').getPublicUrl(path).data.publicUrl;
+        };
 
         try {
-            // Step 1: Upload first image to Supabase Storage (if any)
-            if (images.length > 0) {
-                const coverImage = images[0];
-                const fileExt = coverImage.name.split('.').pop();
-                const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+            setUploadProgress('Uploading photos...');
+            const imageUrls = await Promise.all(images.slice(0, 4).map(img => uploadFile(img.file, 'images')));
 
-                setUploadProgress('Uploading image...');
-                const { error: uploadError } = await supabase.storage
-                    .from('property-images')
-                    .upload(fileName, coverImage.file, { upsert: true });
+            setUploadProgress('Uploading documents...');
+            const docUrls = await Promise.all(docs.slice(0, 2).map(doc => uploadFile(doc.file, 'docs')));
 
-                if (uploadError) throw new Error('Image upload failed: ' + uploadError.message);
+            setUploadProgress('Uploading videos...');
+            const videoUrls = await Promise.all(videos.slice(0, 2).map(vid => uploadFile(vid.file, 'videos')));
 
-                // Get the public URL
-                const { data: { publicUrl } } = supabase.storage
-                    .from('property-images')
-                    .getPublicUrl(fileName);
-
-                imageUrl = publicUrl;
-                setUploadProgress('Saving listing...');
-            }
-
-            // Step 2: Insert property record into the database
+            setUploadProgress('Saving listing...');
             const { error: insertError } = await supabase
                 .from('properties')
                 .insert([{
@@ -163,7 +159,12 @@ const ListProperty = () => {
                     description: formData.description,
                     status: 'pending',
                     user_id: user.id,
-                    image_url: imageUrl
+                    image_url: imageUrls[0] || null,
+                    image_urls: imageUrls,
+                    document_urls: docUrls,
+                    video_urls: videoUrls,
+                    poster_type: 'user',
+                    is_verified: false,
                 }]);
 
             if (insertError) throw insertError;
@@ -302,19 +303,92 @@ const ListProperty = () => {
                         </div>
                     </div>
 
-                    {/* Section 3: REAL Drag & Drop Image Upload */}
+                    {/* Section 3: Media Upload */}
                     <div className="mb-12">
                         <div className="flex items-center space-x-3 mb-6 border-b border-gray-100 pb-4">
                             <div className="bg-gray-100 p-2 rounded-lg"><Camera className="w-5 h-5 text-gray-600" /></div>
-                            <h2 className="text-2xl font-bold">3. Property Photos</h2>
+                            <h2 className="text-2xl font-bold">3. Photos, Documents & Videos</h2>
                         </div>
-                        <ImageDropZone images={images} setImages={setImages} />
-                        {images.length > 0 && (
-                            <p className="text-sm text-brand-green font-semibold mt-3 flex items-center">
-                                <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                                {images.length} photo{images.length > 1 ? 's' : ''} selected. The first photo will be the cover image.
-                            </p>
-                        )}
+
+                        {/* Photos - max 4 */}
+                        <div className="mb-6">
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="text-sm font-bold text-gray-700">Photos <span className="text-gray-400 font-normal">(up to 4)</span></label>
+                                <span className="text-sm font-semibold text-brand-green">{images.length}/4</span>
+                            </div>
+                            <ImageDropZone images={images} setImages={(newImages) => setImages(newImages.slice(0, 4))} />
+                            {images.length > 0 && (
+                                <p className="text-sm text-brand-green font-semibold mt-3 flex items-center">
+                                    <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                                    {images.length} photo{images.length > 1 ? 's' : ''} selected. The first photo will be the cover image.
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Documents - max 2 */}
+                        <div className="mb-6">
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="text-sm font-bold text-gray-700">Title Documents & Survey Plans <span className="text-gray-400 font-normal">(up to 2 PDF / DOC files)</span></label>
+                                <span className="text-sm font-semibold text-brand-green">{docs.length}/2</span>
+                            </div>
+                            {docs.length < 2 && (
+                                <div className="relative border-2 border-dashed border-gray-200 rounded-2xl p-7 text-center hover:border-blue-400 hover:bg-blue-50/30 transition-colors cursor-pointer group">
+                                    <input type="file" accept=".pdf,.doc,.docx" multiple className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        onChange={(e) => { const files = Array.from(e.target.files); const remaining = 2 - docs.length; setDocs(prev => [...prev, ...files.slice(0, remaining).map(f => ({ file: f, name: f.name, size: (f.size / 1024).toFixed(1) + ' KB' }))]); }} />
+                                    <div className="text-3xl mb-2">📄</div>
+                                    <p className="font-bold text-gray-600">Click to upload documents</p>
+                                    <p className="text-gray-400 text-xs mt-1">PDF, DOC, DOCX up to 10MB each</p>
+                                </div>
+                            )}
+                            {docs.length > 0 && (
+                                <div className="mt-3 space-y-2">
+                                    {docs.map((doc, i) => (
+                                        <div key={i} className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                                            <span className="text-2xl">📄</span>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-semibold truncate">{doc.name}</p>
+                                                <p className="text-xs text-gray-400">{doc.size}</p>
+                                            </div>
+                                            <button type="button" onClick={() => setDocs(p => p.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500 p-1">
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Videos - max 2 */}
+                        <div>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="text-sm font-bold text-gray-700">Property Videos <span className="text-gray-400 font-normal">(up to 2 — tour, walkthrough, etc.)</span></label>
+                                <span className="text-sm font-semibold text-brand-green">{videos.length}/2</span>
+                            </div>
+                            {videos.length < 2 && (
+                                <div className="relative border-2 border-dashed border-gray-200 rounded-2xl p-7 text-center hover:border-purple-400 hover:bg-purple-50/30 transition-colors cursor-pointer group">
+                                    <input type="file" accept="video/*" multiple className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        onChange={(e) => { const files = Array.from(e.target.files); const remaining = 2 - videos.length; setVideos(prev => [...prev, ...files.slice(0, remaining).map(f => ({ file: f, name: f.name, size: (f.size / (1024 * 1024)).toFixed(1) + ' MB', preview: URL.createObjectURL(f) }))]); }} />
+                                    <div className="text-3xl mb-2">🎬</div>
+                                    <p className="font-bold text-gray-600">Click to upload videos</p>
+                                    <p className="text-gray-400 text-xs mt-1">MP4, MOV, AVI up to 100MB each</p>
+                                </div>
+                            )}
+                            {videos.length > 0 && (
+                                <div className="mt-3 grid grid-cols-2 gap-4">
+                                    {videos.map((vid, i) => (
+                                        <div key={i} className="relative rounded-xl overflow-hidden border group bg-black aspect-video">
+                                            <video src={vid.preview} className="w-full h-full object-cover opacity-70" />
+                                            <div className="absolute inset-0 flex items-center justify-center"><span className="text-white text-2xl">▶</span></div>
+                                            <p className="absolute bottom-1 left-2 text-white text-[10px] truncate max-w-[80%]">{vid.name}</p>
+                                            <button type="button" onClick={() => setVideos(p => p.filter((_, j) => j !== i))}
+                                                className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Submit */}

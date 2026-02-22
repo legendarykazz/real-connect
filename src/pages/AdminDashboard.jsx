@@ -24,8 +24,11 @@ const AdminDashboard = () => {
     const [listingsLoading, setListingsLoading] = useState(true);
     const [showPostForm, setShowPostForm] = useState(false);
     const [adminImages, setAdminImages] = useState([]);
+    const [adminDocs, setAdminDocs] = useState([]);
+    const [adminVideos, setAdminVideos] = useState([]);
     const [adminIsDragging, setAdminIsDragging] = useState(false);
     const [postSuccess, setPostSuccess] = useState(false);
+    const [postLoading, setPostLoading] = useState(false);
 
     // Users state
     const [users, setUsers] = useState([]);
@@ -46,7 +49,19 @@ const AdminDashboard = () => {
     const [newListing, setNewListing] = useState({
         location: '', size: '', price: '',
         propertyType: 'Residential', titleDocument: 'C of O', description: '',
+        posterType: 'admin',  // 'admin' | 'agency'
+        agencyName: '',
+        isVerified: true,
     });
+
+    // Helper to upload a file to Supabase Storage and return its public URL
+    const uploadFile = async (file, folder) => {
+        const ext = file.name.split('.').pop();
+        const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error } = await supabase.storage.from('property-images').upload(path, file, { upsert: true });
+        if (error) throw new Error('Upload failed: ' + error.message);
+        return supabase.storage.from('property-images').getPublicUrl(path).data.publicUrl;
+    };
 
     // ---- FETCH LISTINGS ----
     const fetchListings = async () => {
@@ -133,24 +148,28 @@ const AdminDashboard = () => {
     // ---- ADMIN POST ----
     const handlePostSubmit = async (e) => {
         e.preventDefault();
-        let imageUrl = null;
+        setPostLoading(true);
         try {
-            if (adminImages.length > 0) {
-                const img = adminImages[0];
-                const fileExt = img.name.split('.').pop();
-                const fileName = `admin/${Date.now()}.${fileExt}`;
-                const { error: uploadError } = await supabase.storage
-                    .from('property-images')
-                    .upload(fileName, img.file, { upsert: true });
-                if (!uploadError) {
-                    const { data: { publicUrl } } = supabase.storage
-                        .from('property-images').getPublicUrl(fileName);
-                    imageUrl = publicUrl;
-                }
-            }
+            // Upload all images (up to 4)
+            const imageUrls = await Promise.all(
+                adminImages.slice(0, 4).map(img => uploadFile(img.file, 'admin/images'))
+            );
+            // Upload all documents (up to 2)
+            const docUrls = await Promise.all(
+                adminDocs.slice(0, 2).map(doc => uploadFile(doc.file, 'admin/docs'))
+            );
+            // Upload all videos (up to 2)
+            const videoUrls = await Promise.all(
+                adminVideos.slice(0, 2).map(vid => uploadFile(vid.file, 'admin/videos'))
+            );
+
+            const posterName = newListing.posterType === 'agency'
+                ? newListing.agencyName || 'Agency'
+                : 'RealConnect Admin';
+
             const { error } = await supabase.from('properties').insert([{
-                first_name: 'RealConnect',
-                last_name: 'Admin',
+                first_name: posterName,
+                last_name: '',
                 email: currentAdmin?.email || 'admin@realconnect.com',
                 phone: '0000000',
                 property_type: newListing.propertyType,
@@ -160,17 +179,25 @@ const AdminDashboard = () => {
                 title_document: newListing.titleDocument,
                 description: newListing.description,
                 status: 'approved',
-                image_url: imageUrl,
+                image_url: imageUrls[0] || null,
+                image_urls: imageUrls,
+                document_urls: docUrls,
+                video_urls: videoUrls,
+                poster_type: newListing.posterType,
+                agency_name: newListing.posterType === 'agency' ? newListing.agencyName : null,
+                is_verified: newListing.isVerified,
             }]);
             if (error) throw error;
             setShowPostForm(false);
-            setAdminImages([]);
+            setAdminImages([]); setAdminDocs([]); setAdminVideos([]);
             setPostSuccess(true);
             setTimeout(() => setPostSuccess(false), 3000);
-            setNewListing({ location: '', size: '', price: '', propertyType: 'Residential', titleDocument: 'C of O', description: '' });
+            setNewListing({ location: '', size: '', price: '', propertyType: 'Residential', titleDocument: 'C of O', description: '', posterType: 'admin', agencyName: '', isVerified: true });
             fetchListings();
         } catch (err) {
             alert('Error posting property: ' + err.message);
+        } finally {
+            setPostLoading(false);
         }
     };
 
@@ -281,66 +308,111 @@ const AdminDashboard = () => {
                             {/* Admin Post Form */}
                             {showPostForm && (
                                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-                                    <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                                        <Plus className="w-5 h-5 text-brand-green" /> Post a New Listing (Published immediately)
+                                    <h2 className="text-lg font-bold mb-5 flex items-center gap-2">
+                                        <Plus className="w-5 h-5 text-brand-green" /> Post a New Listing
+                                        <span className="ml-auto text-xs font-normal bg-green-100 text-brand-green px-3 py-1 rounded-full">Published immediately</span>
                                     </h2>
-                                    <form onSubmit={handlePostSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        <div className="md:col-span-2 lg:col-span-3 space-y-1">
-                                            <label className="text-xs font-bold text-gray-600">Location *</label>
-                                            <input required value={newListing.location} onChange={e => setNewListing({ ...newListing, location: e.target.value })}
-                                                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-green outline-none"
-                                                placeholder="e.g. Plot 5, Lekki Phase 2, Lagos" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-600">Property Type *</label>
-                                            <select required value={newListing.propertyType} onChange={e => setNewListing({ ...newListing, propertyType: e.target.value })}
-                                                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-brand-green outline-none">
-                                                <option>Residential</option><option>Commercial</option><option>Agricultural</option><option>Mixed Use</option>
-                                            </select>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-600">Title Document *</label>
-                                            <select required value={newListing.titleDocument} onChange={e => setNewListing({ ...newListing, titleDocument: e.target.value })}
-                                                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-brand-green outline-none">
-                                                <option>C of O</option><option>Governor's Consent</option><option>Excision / Gazette</option><option>Registered Deed</option>
-                                            </select>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-600">Size (sqm) *</label>
-                                            <input required value={newListing.size} onChange={e => setNewListing({ ...newListing, size: e.target.value })}
-                                                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-green outline-none" placeholder="e.g. 500" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-600">Price (₦) *</label>
-                                            <input required value={newListing.price} onChange={e => setNewListing({ ...newListing, price: e.target.value })}
-                                                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-green outline-none" placeholder="e.g. 25,000,000" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-600">Description</label>
-                                            <input value={newListing.description} onChange={e => setNewListing({ ...newListing, description: e.target.value })}
-                                                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-green outline-none" placeholder="Brief description..." />
+                                    <form onSubmit={handlePostSubmit} className="space-y-5">
+
+                                        {/* ---- Poster Type ---- */}
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-600 mb-2 block">Post As *</label>
+                                            <div className="flex gap-3">
+                                                {['admin', 'agency'].map(type => (
+                                                    <button key={type} type="button"
+                                                        onClick={() => setNewListing({ ...newListing, posterType: type })}
+                                                        className={`flex-1 py-2.5 rounded-xl border-2 font-bold text-sm capitalize transition-all ${newListing.posterType === type ? 'border-brand-green bg-green-50 text-brand-green' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
+                                                        {type === 'admin' ? '🛡️ Admin' : '🏢 Agency'}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            {newListing.posterType === 'agency' && (
+                                                <input
+                                                    required value={newListing.agencyName}
+                                                    onChange={e => setNewListing({ ...newListing, agencyName: e.target.value })}
+                                                    placeholder="Agency name (e.g. Prime Lands Ltd)"
+                                                    className="mt-3 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-green outline-none"
+                                                />
+                                            )}
                                         </div>
 
-                                        {/* Drag & Drop */}
-                                        <div className="md:col-span-2 lg:col-span-3 space-y-2">
-                                            <label className="text-xs font-bold text-gray-600">Property Photo</label>
-                                            <div onDrop={(e) => { e.preventDefault(); setAdminIsDragging(false); const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')); setAdminImages(files.map(f => ({ file: f, preview: URL.createObjectURL(f), name: f.name }))); }}
-                                                onDragOver={(e) => { e.preventDefault(); setAdminIsDragging(true); }}
-                                                onDragLeave={() => setAdminIsDragging(false)}
-                                                className={`relative border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer ${adminIsDragging ? 'border-brand-green bg-green-50' : 'border-gray-200 hover:border-brand-green'}`}>
-                                                <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                    onChange={(e) => { const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/')); setAdminImages(files.map(f => ({ file: f, preview: URL.createObjectURL(f), name: f.name }))); }} />
-                                                <UploadCloud className={`w-7 h-7 mx-auto mb-1.5 ${adminIsDragging ? 'text-brand-green' : 'text-gray-400'}`} />
-                                                <p className="text-sm text-gray-500">{adminImages.length > 0 ? `${adminImages.length} photo selected` : 'Drag & drop or click to upload'}</p>
+                                        {/* ---- Verification Badge ---- */}
+                                        <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                                            <div>
+                                                <p className="text-sm font-bold text-brand-dark">✅ Verified Badge</p>
+                                                <p className="text-xs text-gray-500">Show "Verified" badge on this listing</p>
                                             </div>
+                                            <button type="button"
+                                                onClick={() => setNewListing({ ...newListing, isVerified: !newListing.isVerified })}
+                                                className={`w-12 h-6 rounded-full relative transition-all duration-200 ${newListing.isVerified ? 'bg-brand-green' : 'bg-gray-300'}`}>
+                                                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${newListing.isVerified ? 'left-7' : 'left-1'}`} />
+                                            </button>
+                                        </div>
+
+                                        {/* ---- Property Info Grid ---- */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            <div className="md:col-span-2 lg:col-span-3 space-y-1">
+                                                <label className="text-xs font-bold text-gray-600">Location *</label>
+                                                <input required value={newListing.location} onChange={e => setNewListing({ ...newListing, location: e.target.value })}
+                                                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-green outline-none"
+                                                    placeholder="e.g. Plot 5, Lekki Phase 2, Lagos" />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-gray-600">Property Type *</label>
+                                                <select required value={newListing.propertyType} onChange={e => setNewListing({ ...newListing, propertyType: e.target.value })}
+                                                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-brand-green outline-none">
+                                                    <option>Residential</option><option>Commercial</option><option>Agricultural</option><option>Mixed Use</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-gray-600">Title Document *</label>
+                                                <select required value={newListing.titleDocument} onChange={e => setNewListing({ ...newListing, titleDocument: e.target.value })}
+                                                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-brand-green outline-none">
+                                                    <option>C of O</option><option>Governor's Consent</option><option>Excision / Gazette</option><option>Registered Deed</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-gray-600">Size (sqm) *</label>
+                                                <input required value={newListing.size} onChange={e => setNewListing({ ...newListing, size: e.target.value })}
+                                                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-green outline-none" placeholder="e.g. 500" />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-gray-600">Price (₦) *</label>
+                                                <input required value={newListing.price} onChange={e => setNewListing({ ...newListing, price: e.target.value })}
+                                                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-green outline-none" placeholder="e.g. 25,000,000" />
+                                            </div>
+                                            <div className="space-y-1 md:col-span-2">
+                                                <label className="text-xs font-bold text-gray-600">Description</label>
+                                                <textarea value={newListing.description} onChange={e => setNewListing({ ...newListing, description: e.target.value })}
+                                                    rows={2} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-green outline-none resize-none" placeholder="Brief description about the land..." />
+                                            </div>
+                                        </div>
+
+                                        {/* ---- Photos (up to 4) ---- */}
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-gray-600">
+                                                Photos <span className="text-gray-400 font-normal">— up to 4 images</span>
+                                                <span className="ml-2 text-brand-green font-semibold">{adminImages.length}/4</span>
+                                            </label>
+                                            {adminImages.length < 4 && (
+                                                <div onDrop={(e) => { e.preventDefault(); setAdminIsDragging(false); const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')); const remaining = 4 - adminImages.length; setAdminImages(prev => [...prev, ...files.slice(0, remaining).map(f => ({ file: f, preview: URL.createObjectURL(f), name: f.name }))]); }}
+                                                    onDragOver={(e) => { e.preventDefault(); setAdminIsDragging(true); }} onDragLeave={() => setAdminIsDragging(false)}
+                                                    className={`relative border-2 border-dashed rounded-xl p-5 text-center transition-all cursor-pointer ${adminIsDragging ? 'border-brand-green bg-green-50' : 'border-gray-200 hover:border-brand-green hover:bg-gray-50'}`}>
+                                                    <input type="file" accept="image/*" multiple className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                        onChange={(e) => { const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/')); const remaining = 4 - adminImages.length; setAdminImages(prev => [...prev, ...files.slice(0, remaining).map(f => ({ file: f, preview: URL.createObjectURL(f), name: f.name }))]); }} />
+                                                    <UploadCloud className="w-6 h-6 mx-auto mb-1 text-gray-400" />
+                                                    <p className="text-sm text-gray-500">Drag & drop or click to upload photos</p>
+                                                </div>
+                                            )}
                                             {adminImages.length > 0 && (
-                                                <div className="flex gap-3 flex-wrap mt-2">
+                                                <div className="grid grid-cols-4 gap-3">
                                                     {adminImages.map((img, i) => (
-                                                        <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border group">
-                                                            <img src={img.preview} className="w-full h-full object-cover" alt="preview" />
+                                                        <div key={i} className={`relative rounded-xl overflow-hidden border group aspect-square ${i === 0 ? 'ring-2 ring-brand-green' : ''}`}>
+                                                            <img src={img.preview} className="w-full h-full object-cover" alt={`photo ${i + 1}`} />
+                                                            {i === 0 && <span className="absolute bottom-1 left-1 bg-brand-green text-white text-[9px] px-1.5 py-0.5 rounded font-bold">COVER</span>}
                                                             <button type="button" onClick={() => setAdminImages(p => p.filter((_, j) => j !== i))}
-                                                                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center">
-                                                                <X className="w-4 h-4 text-white" />
+                                                                className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <X className="w-3 h-3" />
                                                             </button>
                                                         </div>
                                                     ))}
@@ -348,9 +420,71 @@ const AdminDashboard = () => {
                                             )}
                                         </div>
 
-                                        <div className="md:col-span-2 lg:col-span-3 pt-2 border-t border-gray-100">
-                                            <button type="submit" className="bg-brand-green text-white px-6 py-3 rounded-xl font-bold hover:bg-green-700 transition-colors shadow-sm">
-                                                🚀 Publish Live Listing
+                                        {/* ---- Documents (up to 2 PDFs) ---- */}
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-gray-600">
+                                                Documents <span className="text-gray-400 font-normal">— up to 2 PDF files (title docs, survey plans, etc.)</span>
+                                                <span className="ml-2 text-brand-green font-semibold">{adminDocs.length}/2</span>
+                                            </label>
+                                            {adminDocs.length < 2 && (
+                                                <div className="relative border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer">
+                                                    <input type="file" accept=".pdf,.doc,.docx" multiple className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                        onChange={(e) => { const files = Array.from(e.target.files); const remaining = 2 - adminDocs.length; setAdminDocs(prev => [...prev, ...files.slice(0, remaining).map(f => ({ file: f, name: f.name, size: (f.size / 1024).toFixed(1) + ' KB' }))]); }} />
+                                                    <p className="text-sm text-gray-500">📄 Click to upload PDF / DOC files</p>
+                                                </div>
+                                            )}
+                                            {adminDocs.length > 0 && (
+                                                <div className="space-y-2">
+                                                    {adminDocs.map((doc, i) => (
+                                                        <div key={i} className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5">
+                                                            <span className="text-2xl">📄</span>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-semibold truncate">{doc.name}</p>
+                                                                <p className="text-xs text-gray-400">{doc.size}</p>
+                                                            </div>
+                                                            <button type="button" onClick={() => setAdminDocs(p => p.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* ---- Videos (up to 2) ---- */}
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-gray-600">
+                                                Videos <span className="text-gray-400 font-normal">— up to 2 (property tour, walkthrough, etc.)</span>
+                                                <span className="ml-2 text-brand-green font-semibold">{adminVideos.length}/2</span>
+                                            </label>
+                                            {adminVideos.length < 2 && (
+                                                <div className="relative border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-purple-400 hover:bg-purple-50 transition-colors cursor-pointer">
+                                                    <input type="file" accept="video/*" multiple className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                        onChange={(e) => { const files = Array.from(e.target.files); const remaining = 2 - adminVideos.length; setAdminVideos(prev => [...prev, ...files.slice(0, remaining).map(f => ({ file: f, name: f.name, size: (f.size / (1024 * 1024)).toFixed(1) + ' MB', preview: URL.createObjectURL(f) }))]); }} />
+                                                    <p className="text-sm text-gray-500">🎬 Click to upload video files (MP4, MOV, etc.)</p>
+                                                </div>
+                                            )}
+                                            {adminVideos.length > 0 && (
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    {adminVideos.map((vid, i) => (
+                                                        <div key={i} className="relative rounded-xl overflow-hidden border group bg-black aspect-video">
+                                                            <video src={vid.preview} className="w-full h-full object-cover opacity-80" />
+                                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                                <span className="text-white text-2xl">▶</span>
+                                                            </div>
+                                                            <p className="absolute bottom-1 left-2 text-white text-[10px] font-semibold truncate max-w-[80%]">{vid.name}</p>
+                                                            <button type="button" onClick={() => setAdminVideos(p => p.filter((_, j) => j !== i))}
+                                                                className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100">
+                                                                <X className="w-3 h-3" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="pt-2 border-t border-gray-100">
+                                            <button type="submit" disabled={postLoading}
+                                                className="bg-brand-green text-white px-6 py-3 rounded-xl font-bold hover:bg-green-700 transition-colors shadow-sm disabled:opacity-60 flex items-center gap-2">
+                                                {postLoading ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="white" strokeWidth="4" /><path className="opacity-75" fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Publishing...</> : '🚀 Publish Live Listing'}
                                             </button>
                                         </div>
                                     </form>
@@ -430,177 +564,182 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
                         </div>
-                    )}
+                    )
+                    }
 
                     {/* ===== USERS TAB ===== */}
-                    {activeTab === 'users' && (
-                        <div>
-                            <div className="mb-6">
-                                <h1 className="text-2xl font-bold">Users & Sellers</h1>
-                                <p className="text-gray-500 text-sm mt-1">Everyone who has submitted a property listing</p>
-                            </div>
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-gray-50 border-b border-gray-100">
-                                            <tr>
-                                                <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">User</th>
-                                                <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Phone</th>
-                                                <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Listings</th>
-                                                <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Role</th>
-                                                <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Joined</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-50">
-                                            {usersLoading && (
-                                                <tr><td colSpan={5} className="text-center py-12 text-gray-400">Loading users...</td></tr>
-                                            )}
-                                            {!usersLoading && users.length === 0 && (
-                                                <tr><td colSpan={5} className="text-center py-12 text-gray-400">No users have submitted listings yet.</td></tr>
-                                            )}
-                                            {!usersLoading && users.map((u, i) => (
-                                                <tr key={i} className="hover:bg-gray-50/50">
-                                                    <td className="px-5 py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-9 h-9 rounded-full bg-brand-green/10 text-brand-green flex items-center justify-center font-bold text-sm shrink-0">
-                                                                {u.name?.[0]?.toUpperCase() || '?'}
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-semibold">{u.name}</p>
-                                                                <p className="text-xs text-gray-400">{u.email}</p>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-5 py-4 text-gray-600">{u.phone}</td>
-                                                    <td className="px-5 py-4">
-                                                        <span className="bg-gray-100 text-gray-700 font-bold px-2.5 py-1 rounded-full text-xs">{u.totalListings}</span>
-                                                    </td>
-                                                    <td className="px-5 py-4">
-                                                        {u.isAdmin
-                                                            ? <span className="flex items-center gap-1.5 text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100"><Shield className="w-3.5 h-3.5" />Admin</span>
-                                                            : <span className="flex items-center gap-1.5 text-xs font-bold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-full"><UserCheck className="w-3.5 h-3.5" />Seller</span>
-                                                        }
-                                                    </td>
-                                                    <td className="px-5 py-4 text-gray-400 text-xs">
-                                                        {new Date(u.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                    </td>
+                    {
+                        activeTab === 'users' && (
+                            <div>
+                                <div className="mb-6">
+                                    <h1 className="text-2xl font-bold">Users & Sellers</h1>
+                                    <p className="text-gray-500 text-sm mt-1">Everyone who has submitted a property listing</p>
+                                </div>
+                                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-gray-50 border-b border-gray-100">
+                                                <tr>
+                                                    <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">User</th>
+                                                    <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Phone</th>
+                                                    <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Listings</th>
+                                                    <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Role</th>
+                                                    <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Joined</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-50">
+                                                {usersLoading && (
+                                                    <tr><td colSpan={5} className="text-center py-12 text-gray-400">Loading users...</td></tr>
+                                                )}
+                                                {!usersLoading && users.length === 0 && (
+                                                    <tr><td colSpan={5} className="text-center py-12 text-gray-400">No users have submitted listings yet.</td></tr>
+                                                )}
+                                                {!usersLoading && users.map((u, i) => (
+                                                    <tr key={i} className="hover:bg-gray-50/50">
+                                                        <td className="px-5 py-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-9 h-9 rounded-full bg-brand-green/10 text-brand-green flex items-center justify-center font-bold text-sm shrink-0">
+                                                                    {u.name?.[0]?.toUpperCase() || '?'}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-semibold">{u.name}</p>
+                                                                    <p className="text-xs text-gray-400">{u.email}</p>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-5 py-4 text-gray-600">{u.phone}</td>
+                                                        <td className="px-5 py-4">
+                                                            <span className="bg-gray-100 text-gray-700 font-bold px-2.5 py-1 rounded-full text-xs">{u.totalListings}</span>
+                                                        </td>
+                                                        <td className="px-5 py-4">
+                                                            {u.isAdmin
+                                                                ? <span className="flex items-center gap-1.5 text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100"><Shield className="w-3.5 h-3.5" />Admin</span>
+                                                                : <span className="flex items-center gap-1.5 text-xs font-bold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-full"><UserCheck className="w-3.5 h-3.5" />Seller</span>
+                                                            }
+                                                        </td>
+                                                        <td className="px-5 py-4 text-gray-400 text-xs">
+                                                            {new Date(u.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )
+                    }
 
                     {/* ===== PLATFORM SETTINGS TAB ===== */}
-                    {activeTab === 'settings' && (
-                        <div className="max-w-2xl">
-                            <div className="mb-6">
-                                <h1 className="text-2xl font-bold">Platform Settings</h1>
-                                <p className="text-gray-500 text-sm mt-1">Manage admin access and platform preferences</p>
-                            </div>
-
-                            {settingsSaved && (
-                                <div className="mb-6 bg-green-50 border border-green-100 text-green-700 p-4 rounded-xl flex items-center gap-3">
-                                    <CheckCircle2 className="w-5 h-5 shrink-0" />
-                                    <span className="text-sm font-semibold">Settings saved! You need to update App.jsx for admin email changes to take effect — see instructions below.</span>
+                    {
+                        activeTab === 'settings' && (
+                            <div className="max-w-2xl">
+                                <div className="mb-6">
+                                    <h1 className="text-2xl font-bold">Platform Settings</h1>
+                                    <p className="text-gray-500 text-sm mt-1">Manage admin access and platform preferences</p>
                                 </div>
-                            )}
 
-                            {/* Admin Access */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-                                <h2 className="text-lg font-bold mb-1 flex items-center gap-2">
-                                    <Shield className="w-5 h-5 text-purple-600" /> Admin Access
-                                </h2>
-                                <p className="text-sm text-gray-500 mb-5">These emails have full access to this admin dashboard.</p>
+                                {settingsSaved && (
+                                    <div className="mb-6 bg-green-50 border border-green-100 text-green-700 p-4 rounded-xl flex items-center gap-3">
+                                        <CheckCircle2 className="w-5 h-5 shrink-0" />
+                                        <span className="text-sm font-semibold">Settings saved! You need to update App.jsx for admin email changes to take effect — see instructions below.</span>
+                                    </div>
+                                )}
 
-                                <div className="space-y-3 mb-5">
-                                    {adminList.map((email, i) => (
-                                        <div key={i} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-xs shrink-0">
-                                                    {email[0].toUpperCase()}
+                                {/* Admin Access */}
+                                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+                                    <h2 className="text-lg font-bold mb-1 flex items-center gap-2">
+                                        <Shield className="w-5 h-5 text-purple-600" /> Admin Access
+                                    </h2>
+                                    <p className="text-sm text-gray-500 mb-5">These emails have full access to this admin dashboard.</p>
+
+                                    <div className="space-y-3 mb-5">
+                                        {adminList.map((email, i) => (
+                                            <div key={i} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-xs shrink-0">
+                                                        {email[0].toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-semibold">{email}</p>
+                                                        {email === currentAdmin?.email && <p className="text-xs text-brand-green font-medium">You</p>}
+                                                    </div>
                                                 </div>
+                                                {email !== currentAdmin?.email && (
+                                                    <button onClick={() => setAdminList(adminList.filter((_, j) => j !== i))}
+                                                        className="text-gray-300 hover:text-red-500 transition-colors">
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <input
+                                            type="email"
+                                            value={newAdminEmail}
+                                            onChange={e => setNewAdminEmail(e.target.value)}
+                                            placeholder="Enter email to add as admin"
+                                            className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                if (newAdminEmail && !adminList.includes(newAdminEmail)) {
+                                                    setAdminList([...adminList, newAdminEmail]);
+                                                    setNewAdminEmail('');
+                                                }
+                                            }}
+                                            className="bg-purple-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-purple-700 transition-colors text-sm flex items-center gap-2"
+                                        >
+                                            <Plus className="w-4 h-4" /> Add
+                                        </button>
+                                    </div>
+
+                                    <div className="mt-5 bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-blue-700">
+                                        <strong>📌 Note:</strong> After adding/removing admins here, you also need to update the <code className="bg-blue-100 px-1 rounded">ADMIN_EMAILS</code> array in <code className="bg-blue-100 px-1 rounded">src/App.jsx</code> with the same emails, then push to GitHub for the change to take effect on the live site.
+                                    </div>
+                                </div>
+
+                                {/* General settings */}
+                                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+                                    <h2 className="text-lg font-bold mb-5 flex items-center gap-2">
+                                        <Settings className="w-5 h-5 text-gray-500" /> General Settings
+                                    </h2>
+                                    <div className="space-y-5">
+                                        {[
+                                            { key: 'requireEmailVerification', label: 'Require Email Verification', desc: 'New users must verify their email before they can submit listings' },
+                                            { key: 'allowPublicListings', label: 'Show Listings Publicly', desc: 'Approved listings are visible to all visitors without login' },
+                                            { key: 'maintenanceMode', label: 'Maintenance Mode', desc: 'Temporarily disable public access to the site' },
+                                        ].map(({ key, label, desc }) => (
+                                            <div key={key} className="flex items-start justify-between gap-4">
                                                 <div>
-                                                    <p className="text-sm font-semibold">{email}</p>
-                                                    {email === currentAdmin?.email && <p className="text-xs text-brand-green font-medium">You</p>}
+                                                    <p className="text-sm font-semibold text-brand-dark">{label}</p>
+                                                    <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
                                                 </div>
-                                            </div>
-                                            {email !== currentAdmin?.email && (
-                                                <button onClick={() => setAdminList(adminList.filter((_, j) => j !== i))}
-                                                    className="text-gray-300 hover:text-red-500 transition-colors">
-                                                    <X className="w-4 h-4" />
+                                                <button
+                                                    onClick={() => setSiteSettings(s => ({ ...s, [key]: !s[key] }))}
+                                                    className={`shrink-0 w-12 h-6 rounded-full transition-all duration-200 relative ${siteSettings[key] ? 'bg-brand-green' : 'bg-gray-200'}`}
+                                                >
+                                                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${siteSettings[key] ? 'left-7' : 'left-1'}`} />
                                                 </button>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="flex gap-3">
-                                    <input
-                                        type="email"
-                                        value={newAdminEmail}
-                                        onChange={e => setNewAdminEmail(e.target.value)}
-                                        placeholder="Enter email to add as admin"
-                                        className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
-                                    />
-                                    <button
-                                        onClick={() => {
-                                            if (newAdminEmail && !adminList.includes(newAdminEmail)) {
-                                                setAdminList([...adminList, newAdminEmail]);
-                                                setNewAdminEmail('');
-                                            }
-                                        }}
-                                        className="bg-purple-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-purple-700 transition-colors text-sm flex items-center gap-2"
-                                    >
-                                        <Plus className="w-4 h-4" /> Add
-                                    </button>
-                                </div>
-
-                                <div className="mt-5 bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-blue-700">
-                                    <strong>📌 Note:</strong> After adding/removing admins here, you also need to update the <code className="bg-blue-100 px-1 rounded">ADMIN_EMAILS</code> array in <code className="bg-blue-100 px-1 rounded">src/App.jsx</code> with the same emails, then push to GitHub for the change to take effect on the live site.
-                                </div>
-                            </div>
-
-                            {/* General settings */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-                                <h2 className="text-lg font-bold mb-5 flex items-center gap-2">
-                                    <Settings className="w-5 h-5 text-gray-500" /> General Settings
-                                </h2>
-                                <div className="space-y-5">
-                                    {[
-                                        { key: 'requireEmailVerification', label: 'Require Email Verification', desc: 'New users must verify their email before they can submit listings' },
-                                        { key: 'allowPublicListings', label: 'Show Listings Publicly', desc: 'Approved listings are visible to all visitors without login' },
-                                        { key: 'maintenanceMode', label: 'Maintenance Mode', desc: 'Temporarily disable public access to the site' },
-                                    ].map(({ key, label, desc }) => (
-                                        <div key={key} className="flex items-start justify-between gap-4">
-                                            <div>
-                                                <p className="text-sm font-semibold text-brand-dark">{label}</p>
-                                                <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
                                             </div>
-                                            <button
-                                                onClick={() => setSiteSettings(s => ({ ...s, [key]: !s[key] }))}
-                                                className={`shrink-0 w-12 h-6 rounded-full transition-all duration-200 relative ${siteSettings[key] ? 'bg-brand-green' : 'bg-gray-200'}`}
-                                            >
-                                                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${siteSettings[key] ? 'left-7' : 'left-1'}`} />
-                                            </button>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
 
-                            <button
-                                onClick={() => { setSettingsSaved(true); setTimeout(() => setSettingsSaved(false), 4000); }}
-                                className="flex items-center gap-2 bg-brand-dark text-white px-6 py-3 rounded-xl font-bold hover:bg-gray-900 transition-colors shadow-sm"
-                            >
-                                <Save className="w-4 h-4" /> Save Settings
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </main>
-        </div>
+                                <button
+                                    onClick={() => { setSettingsSaved(true); setTimeout(() => setSettingsSaved(false), 4000); }}
+                                    className="flex items-center gap-2 bg-brand-dark text-white px-6 py-3 rounded-xl font-bold hover:bg-gray-900 transition-colors shadow-sm"
+                                >
+                                    <Save className="w-4 h-4" /> Save Settings
+                                </button>
+                            </div>
+                        )
+                    }
+                </div >
+            </main >
+        </div >
     );
 };
 
