@@ -1,8 +1,28 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { user, signOut } = useAuth();
+    const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        await signOut();
+        navigate('/');
+    };
+
+    const handleContactClick = () => {
+        // Navigate home then scroll to contact section
+        if (window.location.pathname !== '/') {
+            navigate('/');
+            setTimeout(() => {
+                document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+            }, 300);
+        } else {
+            document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
 
     return (
         <nav className="fixed w-full z-50 bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-100">
@@ -17,7 +37,17 @@ const Navbar = () => {
                     <div className="hidden md:flex space-x-8 items-center">
                         <Link to="/browse" className="text-brand-dark hover:text-brand-green font-medium transition-colors">Browse Lands</Link>
                         <Link to="/list-property" className="text-brand-dark hover:text-brand-green font-medium transition-colors">List Property</Link>
-                        <button onClick={() => alert("Opening contact form...")} className="bg-brand-green text-white px-6 py-2.5 rounded-full font-medium hover:bg-green-700 transition-colors shadow-md hover:shadow-lg transform hover:-translate-y-0.5 duration-200">
+
+                        {user ? (
+                            <>
+                                <Link to="/admin" className="text-brand-dark hover:text-brand-green font-medium transition-colors">Dashboard</Link>
+                                <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 font-medium transition-colors">Logout</button>
+                            </>
+                        ) : (
+                            <Link to="/login" className="text-brand-dark hover:text-brand-green font-medium transition-colors">Login</Link>
+                        )}
+
+                        <button onClick={handleContactClick} className="bg-brand-green text-white px-6 py-2.5 rounded-full font-medium hover:bg-green-700 transition-colors shadow-md hover:shadow-lg transform hover:-translate-y-0.5 duration-200">
                             Contact Us
                         </button>
                     </div>
@@ -42,7 +72,17 @@ const Navbar = () => {
                     <div className="md:hidden pb-6 border-t border-gray-100 pt-4 space-y-4 px-2">
                         <Link to="/browse" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 text-base font-medium text-brand-dark hover:text-brand-green hover:bg-gray-50 rounded-md">Browse Lands</Link>
                         <Link to="/list-property" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 text-base font-medium text-brand-dark hover:text-brand-green hover:bg-gray-50 rounded-md">List Property</Link>
-                        <button onClick={() => { alert("Opening contact form..."); setIsMobileMenuOpen(false); }} className="w-full mt-2 bg-brand-green text-white px-6 py-3 rounded-xl font-medium hover:bg-green-700 transition-colors shadow-sm">
+
+                        {user ? (
+                            <>
+                                <Link to="/admin" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 text-base font-medium text-brand-dark hover:text-brand-green hover:bg-gray-50 rounded-md">Dashboard</Link>
+                                <button onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:bg-red-50 rounded-md">Logout</button>
+                            </>
+                        ) : (
+                            <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 text-base font-medium text-brand-dark hover:text-brand-green hover:bg-gray-50 rounded-md">Login</Link>
+                        )}
+
+                        <button onClick={() => { handleContactClick(); setIsMobileMenuOpen(false); }} className="w-full mt-2 bg-brand-green text-white px-6 py-3 rounded-xl font-medium hover:bg-green-700 transition-colors shadow-sm">
                             Contact Us
                         </button>
                     </div>

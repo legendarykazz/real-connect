@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 const Footer = () => {
     return (
-        <footer className="bg-brand-dark text-white pt-20 pb-10 border-t border-white/10">
+        <footer id="contact" className="bg-brand-dark text-white pt-20 pb-10 border-t border-white/10">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
                     <div className="lg:col-span-1">
@@ -45,7 +45,7 @@ const Footer = () => {
                         <ul className="space-y-4">
                             <li><Link to="/browse" className="text-gray-400 hover:text-brand-light-blue transition-colors">Browse Lands</Link></li>
                             <li><Link to="/list-property" className="text-gray-400 hover:text-brand-light-blue transition-colors text-left block w-full">List Property</Link></li>
-                            <li><button onClick={() => alert("Opening contact form...")} className="text-gray-400 hover:text-brand-light-blue transition-colors text-left">Contact Us</button></li>
+                            <li><a href="#contact" className="text-gray-400 hover:text-brand-light-blue transition-colors">Contact Us</a></li>
                             <li><button onClick={() => alert("Loading Privacy Policy...")} className="text-gray-400 hover:text-brand-light-blue transition-colors text-left">Privacy Policy</button></li>
                         </ul>
                     </div>

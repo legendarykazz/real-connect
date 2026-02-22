@@ -6,6 +6,7 @@ import {
     MessageCircle, Phone, Calendar as CalendarIcon, FileCheck
 } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/AppContext';
 
 const mockProperty = {
@@ -55,26 +56,67 @@ const mockProperty = {
 
 const PropertyDetails = () => {
     const { id } = useParams();
-    const { listings, agencies } = useAppContext();
+    const [propertyData, setPropertyData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [viewMode, setViewMode] = useState('gallery'); // 'gallery' | 'map'
     const [isSaved, setIsSaved] = useState(false);
 
-    // Merge context data with mock data structure for dynamic display
-    const contextProperty = listings.find(l => l.id.toString() === id) || listings[0];
-    const agency = agencies.find(a => a.id === contextProperty?.agencyId);
-    const isTrusted = agency?.isTrusted || false;
+    React.useEffect(() => {
+        const fetchProperty = async () => {
+            setLoading(true);
+            try {
+                // Determine if this is a mock ID (e.g. from hardcoded initial state) or a real Supabase UUID
+                if (id.startsWith('RC-')) {
+                    // Fallback to mock behavior for old links
+                    setPropertyData({
+                        ...mockProperty,
+                        seller: { ...mockProperty.seller }
+                    });
+                    setLoading(false);
+                    return;
+                }
 
-    const property = {
-        ...mockProperty,
-        ...contextProperty,
-        images: [contextProperty?.image || mockProperty.images[0], ...mockProperty.images.slice(1)],
-        seller: {
-            name: agency ? agency.name : (contextProperty?.submitter || "Adeola Properties"),
-            type: agency ? "Agency" : "Individual",
-            verified: isTrusted,
-            phone: agency?.contact || "+234 800 123 4567"
-        }
-    };
+                const { data, error } = await supabase
+                    .from('properties')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+
+                if (error) throw error;
+
+                setPropertyData({
+                    ...mockProperty, // Merge with mock for structure/defaults
+                    id: data.id,
+                    title: `${data.property_type} in ${data.location}`,
+                    price: `₦${data.price}`,
+                    location: data.location,
+                    address: data.location,
+                    size: `${data.size} sqm`,
+                    type: data.property_type,
+                    titleDocument: data.title_document,
+                    status: data.status === 'approved' ? 'Available' : data.status,
+                    description: data.description,
+                    images: data.image_url ? [data.image_url, ...mockProperty.images.slice(1)] : mockProperty.images,
+                    seller: {
+                        name: `${data.first_name} ${data.last_name}`,
+                        type: 'Individual/Agency',
+                        verified: data.status === 'approved',
+                        phone: data.phone
+                    }
+                });
+            } catch (err) {
+                console.error("Error fetching property:", err);
+                setError("Could not load property details.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProperty();
+    }, [id]);
+
+    const property = propertyData;
 
     const handleShare = async () => {
         try {
@@ -139,227 +181,233 @@ const PropertyDetails = () => {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+                {loading && <div className="text-center py-20 text-gray-500 text-lg font-semibold animate-pulse">Loading property details...</div>}
+                {error && <div className="bg-red-50 p-6 rounded-xl text-red-600 text-center font-bold border border-red-100">{error}</div>}
 
-                {/* 1. Header & Media Gallery */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+                {!loading && !error && property && (
+                    <>
+                        {/* 1. Header & Media Gallery */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
 
-                    {/* Media Column (Left) */}
-                    <div className="lg:col-span-2 space-y-4">
-                        <div className="flex justify-end space-x-2 mb-2 absolute z-10 p-4">
-                            <button
-                                onClick={() => setViewMode('gallery')}
-                                className={`px-4 py-2 text-sm font-semibold rounded-full shadow-md flex items-center transition-colors ${viewMode === 'gallery' ? 'bg-white text-brand-dark' : 'bg-gray-800/60 text-white hover:bg-gray-800'}`}
-                            >
-                                <ImageIcon className="w-4 h-4 mr-2" /> Photos
-                            </button>
-                            <button
-                                onClick={() => setViewMode('map')}
-                                className={`px-4 py-2 text-sm font-semibold rounded-full shadow-md flex items-center transition-colors ${viewMode === 'map' ? 'bg-white text-brand-dark' : 'bg-gray-800/60 text-white hover:bg-gray-800'}`}
-                            >
-                                <Map className="w-4 h-4 mr-2" /> Map
-                            </button>
-                        </div>
-
-                        {viewMode === 'gallery' ? (
-                            <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-sm">
-                                <div className="col-span-4 md:col-span-3 row-span-2 relative group cursor-pointer h-full">
-                                    <img src={property.images[0]} alt="Main Property View" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                            {/* Media Column (Left) */}
+                            <div className="lg:col-span-2 space-y-4">
+                                <div className="flex justify-end space-x-2 mb-2 absolute z-10 p-4">
+                                    <button
+                                        onClick={() => setViewMode('gallery')}
+                                        className={`px-4 py-2 text-sm font-semibold rounded-full shadow-md flex items-center transition-colors ${viewMode === 'gallery' ? 'bg-white text-brand-dark' : 'bg-gray-800/60 text-white hover:bg-gray-800'}`}
+                                    >
+                                        <ImageIcon className="w-4 h-4 mr-2" /> Photos
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('map')}
+                                        className={`px-4 py-2 text-sm font-semibold rounded-full shadow-md flex items-center transition-colors ${viewMode === 'map' ? 'bg-white text-brand-dark' : 'bg-gray-800/60 text-white hover:bg-gray-800'}`}
+                                    >
+                                        <Map className="w-4 h-4 mr-2" /> Map
+                                    </button>
                                 </div>
-                                <div className="hidden md:block col-span-1 row-span-1 relative group cursor-pointer h-full overflow-hidden">
-                                    <img src={property.images[1]} alt="Property View 2" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                                </div>
-                                <div className="hidden md:block col-span-1 row-span-1 relative group cursor-pointer h-full overflow-hidden">
-                                    <img src={property.images[2]} alt="Property View 3" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity hover:bg-black/40">
-                                        <span className="text-white font-bold text-lg">+5 Photos</span>
+
+                                {viewMode === 'gallery' ? (
+                                    <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-sm">
+                                        <div className="col-span-4 md:col-span-3 row-span-2 relative group cursor-pointer h-full">
+                                            <img src={property.images[0]} alt="Main Property View" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                        </div>
+                                        <div className="hidden md:block col-span-1 row-span-1 relative group cursor-pointer h-full overflow-hidden">
+                                            <img src={property.images[1]} alt="Property View 2" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                        </div>
+                                        <div className="hidden md:block col-span-1 row-span-1 relative group cursor-pointer h-full overflow-hidden">
+                                            <img src={property.images[2]} alt="Property View 3" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity hover:bg-black/40">
+                                                <span className="text-white font-bold text-lg">+5 Photos</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-sm relative">
+                                        <iframe
+                                            className="w-full h-full border-0"
+                                            loading="lazy"
+                                            allowFullScreen
+                                            src={`https://maps.google.com/maps?q=${property.coordinates.lat},${property.coordinates.lng}&z=15&output=embed`}
+                                            title="Property Location"
+                                        ></iframe>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Basic Summary Column (Right) */}
+                            <div className="flex flex-col">
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col">
+                                    <div className="flex items-center space-x-2 text-sm text-gray-500 mb-3">
+                                        <span>ID: {property.id}</span>
+                                        <span>•</span>
+                                        <span className={`font-semibold ${property.status === 'Available' ? 'text-brand-green' : 'text-orange-500'}`}>
+                                            {property.status}
+                                        </span>
+                                    </div>
+
+                                    <h1 className="text-2xl md:text-3xl font-bold text-brand-dark mb-4 leading-tight">
+                                        {property.title}
+                                    </h1>
+
+                                    <div className="text-3xl font-bold text-brand-light-blue mb-6">
+                                        {property.price}
+                                    </div>
+
+                                    <div className="bg-green-50 rounded-xl p-4 mb-8 flex items-start border border-green-100">
+                                        <CheckCircle2 className="w-6 h-6 text-brand-green mr-3 flex-shrink-0 mt-0.5" />
+                                        <div>
+                                            <h4 className="font-bold text-green-900 mb-1">Verified by RealConnect</h4>
+                                            <p className="text-sm text-green-700">This property has passed our stringent 5-point verification check for your safety.</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-auto space-y-3">
+                                        <a href={`tel:${property.seller.phone.replace(/[^0-9+]/g, '')}`} className="w-full bg-brand-light-blue hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors flex justify-center items-center">
+                                            <Phone className="w-5 h-5 mr-2" /> Contact Agent
+                                        </a>
+                                        <a href={`https://wa.me/${property.seller.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="w-full bg-brand-green hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors flex justify-center items-center">
+                                            <MessageCircle className="w-5 h-5 mr-2" /> Chat on WhatsApp
+                                        </a>
+                                        <button onClick={handleScheduleInspection} className="w-full bg-white hover:bg-gray-50 text-brand-dark border border-gray-200 font-bold py-4 rounded-xl transition-colors flex justify-center items-center">
+                                            <CalendarIcon className="w-5 h-5 mr-2" /> Schedule Inspection
+                                        </button>
                                     </div>
                                 </div>
                             </div>
-                        ) : (
-                            <div className="h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-sm relative">
-                                <iframe
-                                    className="w-full h-full border-0"
-                                    loading="lazy"
-                                    allowFullScreen
-                                    src={`https://maps.google.com/maps?q=${property.coordinates.lat},${property.coordinates.lng}&z=15&output=embed`}
-                                    title="Property Location"
-                                ></iframe>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Basic Summary Column (Right) */}
-                    <div className="flex flex-col">
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col">
-                            <div className="flex items-center space-x-2 text-sm text-gray-500 mb-3">
-                                <span>ID: {property.id}</span>
-                                <span>•</span>
-                                <span className={`font-semibold ${property.status === 'Available' ? 'text-brand-green' : 'text-orange-500'}`}>
-                                    {property.status}
-                                </span>
-                            </div>
-
-                            <h1 className="text-2xl md:text-3xl font-bold text-brand-dark mb-4 leading-tight">
-                                {property.title}
-                            </h1>
-
-                            <div className="text-3xl font-bold text-brand-light-blue mb-6">
-                                {property.price}
-                            </div>
-
-                            <div className="bg-green-50 rounded-xl p-4 mb-8 flex items-start border border-green-100">
-                                <CheckCircle2 className="w-6 h-6 text-brand-green mr-3 flex-shrink-0 mt-0.5" />
-                                <div>
-                                    <h4 className="font-bold text-green-900 mb-1">Verified by RealConnect</h4>
-                                    <p className="text-sm text-green-700">This property has passed our stringent 5-point verification check for your safety.</p>
-                                </div>
-                            </div>
-
-                            <div className="mt-auto space-y-3">
-                                <a href={`tel:${property.seller.phone.replace(/[^0-9+]/g, '')}`} className="w-full bg-brand-light-blue hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors flex justify-center items-center">
-                                    <Phone className="w-5 h-5 mr-2" /> Contact Agent
-                                </a>
-                                <a href={`https://wa.me/${property.seller.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="w-full bg-brand-green hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors flex justify-center items-center">
-                                    <MessageCircle className="w-5 h-5 mr-2" /> Chat on WhatsApp
-                                </a>
-                                <button onClick={handleScheduleInspection} className="w-full bg-white hover:bg-gray-50 text-brand-dark border border-gray-200 font-bold py-4 rounded-xl transition-colors flex justify-center items-center">
-                                    <CalendarIcon className="w-5 h-5 mr-2" /> Schedule Inspection
-                                </button>
-                            </div>
                         </div>
-                    </div>
-                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                    {/* Main Detail Content (Left 2 columns) */}
-                    <div className="lg:col-span-2 space-y-8">
+                            {/* Main Detail Content (Left 2 columns) */}
+                            <div className="lg:col-span-2 space-y-8">
 
-                        {/* 2. Key Property Information */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                            <h2 className="text-xl font-bold mb-6 border-b border-gray-100 pb-4">Key Facts</h2>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4">
-                                <div>
-                                    <p className="text-gray-500 text-sm mb-1">Location</p>
-                                    <p className="font-semibold">{property.location}</p>
+                                {/* 2. Key Property Information */}
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                    <h2 className="text-xl font-bold mb-6 border-b border-gray-100 pb-4">Key Facts</h2>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4">
+                                        <div>
+                                            <p className="text-gray-500 text-sm mb-1">Location</p>
+                                            <p className="font-semibold">{property.location}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-500 text-sm mb-1">Land Size</p>
+                                            <p className="font-semibold">{property.size}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-500 text-sm mb-1">Price per sqm</p>
+                                            <p className="font-semibold">{property.pricePerSqm}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-500 text-sm mb-1">Type</p>
+                                            <p className="font-semibold">{property.type}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-500 text-sm mb-1">Topography</p>
+                                            <p className="font-semibold">{property.topography}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-500 text-sm mb-1">Title Document</p>
+                                            <p className="font-semibold">{property.titleDocument}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-500 text-sm mb-1">Survey Plan</p>
+                                            <p className="font-semibold">{property.surveyPlan}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-500 text-sm mb-1">Seller Type</p>
+                                            <p className="font-semibold flex items-center">
+                                                {property.seller.type}
+                                                {property.seller.verified && (
+                                                    <CheckCircle2 className="w-4 h-4 text-brand-light-blue ml-1.5" />
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-gray-500 text-sm mb-1">Land Size</p>
-                                    <p className="font-semibold">{property.size}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-500 text-sm mb-1">Price per sqm</p>
-                                    <p className="font-semibold">{property.pricePerSqm}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-500 text-sm mb-1">Type</p>
-                                    <p className="font-semibold">{property.type}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-500 text-sm mb-1">Topography</p>
-                                    <p className="font-semibold">{property.topography}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-500 text-sm mb-1">Title Document</p>
-                                    <p className="font-semibold">{property.titleDocument}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-500 text-sm mb-1">Survey Plan</p>
-                                    <p className="font-semibold">{property.surveyPlan}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-500 text-sm mb-1">Seller Type</p>
-                                    <p className="font-semibold flex items-center">
-                                        {property.seller.type}
-                                        {property.seller.verified && (
-                                            <CheckCircle2 className="w-4 h-4 text-brand-light-blue ml-1.5" />
-                                        )}
+
+                                {/* 4. Description */}
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                    <h2 className="text-xl font-bold mb-4">Property Description</h2>
+                                    <p className="text-gray-600 leading-relaxed">
+                                        {property.description}
                                     </p>
                                 </div>
-                            </div>
-                        </div>
 
-                        {/* 4. Description */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                            <h2 className="text-xl font-bold mb-4">Property Description</h2>
-                            <p className="text-gray-600 leading-relaxed">
-                                {property.description}
-                            </p>
-                        </div>
-
-                        {/* 5. Features & Amenities */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                            <h2 className="text-xl font-bold mb-6">Features & Amenities</h2>
-                            <div className="grid grid-cols-2 gap-4">
-                                {property.features.map((feature, idx) => (
-                                    <div key={idx} className="flex items-center text-gray-700">
-                                        <CheckCircle2 className="w-5 h-5 text-brand-green mr-3 flex-shrink-0" />
-                                        <span>{feature}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* 7. Documents Section */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-xl font-bold">Documents</h2>
-                            </div>
-                            <div className="space-y-4">
-                                {property.documents.map((doc, idx) => (
-                                    <div key={idx} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors">
-                                        <div className="flex items-center">
-                                            <div className="bg-gray-100 p-2 rounded-lg mr-4">
-                                                <FileText className="w-6 h-6 text-gray-500" />
+                                {/* 5. Features & Amenities */}
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                    <h2 className="text-xl font-bold mb-6">Features & Amenities</h2>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {property.features.map((feature, idx) => (
+                                            <div key={idx} className="flex items-center text-gray-700">
+                                                <CheckCircle2 className="w-5 h-5 text-brand-green mr-3 flex-shrink-0" />
+                                                <span>{feature}</span>
                                             </div>
-                                            <div>
-                                                <h4 className="font-semibold text-brand-dark">{doc.name}</h4>
-                                                <p className="text-xs text-gray-500">{doc.type}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex space-x-2">
-                                            <button onClick={() => handleViewDocument(doc.name)} className="p-2 text-brand-light-blue hover:bg-blue-50 rounded-lg transition-colors" title="View">
-                                                <ExternalLink className="w-5 h-5" />
-                                            </button>
-                                            <button onClick={() => handleDownloadDocument(doc.name)} className="p-2 text-brand-green hover:bg-green-50 rounded-lg transition-colors" title="Download">
-                                                <Download className="w-5 h-5" />
-                                            </button>
-                                        </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-
-                    </div>
-
-                    {/* Sidebar Content (Right column) */}
-                    <div className="space-y-8">
-
-                        {/* 3. Verification Details  */}
-                        <div className="bg-gradient-to-b from-green-50 to-white p-6 rounded-2xl shadow-sm border border-green-100">
-                            <div className="flex items-center space-x-3 mb-6 border-b border-green-100 pb-4">
-                                <div className="bg-brand-green p-2 rounded-full">
-                                    <ShieldCheck className="w-6 h-6 text-white" />
                                 </div>
-                                <h2 className="text-xl font-bold text-brand-dark">Verification Report</h2>
+
+                                {/* 7. Documents Section */}
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h2 className="text-xl font-bold">Documents</h2>
+                                    </div>
+                                    <div className="space-y-4">
+                                        {property.documents.map((doc, idx) => (
+                                            <div key={idx} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors">
+                                                <div className="flex items-center">
+                                                    <div className="bg-gray-100 p-2 rounded-lg mr-4">
+                                                        <FileText className="w-6 h-6 text-gray-500" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-semibold text-brand-dark">{doc.name}</h4>
+                                                        <p className="text-xs text-gray-500">{doc.type}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex space-x-2">
+                                                    <button onClick={() => handleViewDocument(doc.name)} className="p-2 text-brand-light-blue hover:bg-blue-50 rounded-lg transition-colors" title="View">
+                                                        <ExternalLink className="w-5 h-5" />
+                                                    </button>
+                                                    <button onClick={() => handleDownloadDocument(doc.name)} className="p-2 text-brand-green hover:bg-green-50 rounded-lg transition-colors" title="Download">
+                                                        <Download className="w-5 h-5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
                             </div>
 
-                            <div className="space-y-4 mb-6">
-                                <VerificationItem label="Ownership Verified" status={property.verification.ownership} />
-                                <VerificationItem label="Documents Checked" status={property.verification.documents} />
-                                <VerificationItem label="Survey Verified" status={property.verification.survey} />
-                                <VerificationItem label="Location Verified" status={property.verification.location} />
-                                <VerificationItem label="Free from Govt Acquisition" status={property.verification.freeFromAcquisition} />
-                            </div>
+                            {/* Sidebar Content (Right column) */}
+                            <div className="space-y-8">
 
-                            <button onClick={handleViewReport} className="w-full border-2 border-brand-green text-brand-green hover:bg-brand-green hover:text-white font-bold py-3 rounded-xl transition-colors flex justify-center items-center">
-                                <FileCheck className="w-5 h-5 mr-2" /> View PDF Report
-                            </button>
+                                {/* 3. Verification Details  */}
+                                <div className="bg-gradient-to-b from-green-50 to-white p-6 rounded-2xl shadow-sm border border-green-100">
+                                    <div className="flex items-center space-x-3 mb-6 border-b border-green-100 pb-4">
+                                        <div className="bg-brand-green p-2 rounded-full">
+                                            <ShieldCheck className="w-6 h-6 text-white" />
+                                        </div>
+                                        <h2 className="text-xl font-bold text-brand-dark">Verification Report</h2>
+                                    </div>
+
+                                    <div className="space-y-4 mb-6">
+                                        <VerificationItem label="Ownership Verified" status={property.verification.ownership} />
+                                        <VerificationItem label="Documents Checked" status={property.verification.documents} />
+                                        <VerificationItem label="Survey Verified" status={property.verification.survey} />
+                                        <VerificationItem label="Location Verified" status={property.verification.location} />
+                                        <VerificationItem label="Free from Govt Acquisition" status={property.verification.freeFromAcquisition} />
+                                    </div>
+
+                                    <button onClick={handleViewReport} className="w-full border-2 border-brand-green text-brand-green hover:bg-brand-green hover:text-white font-bold py-3 rounded-xl transition-colors flex justify-center items-center">
+                                        <FileCheck className="w-5 h-5 mr-2" /> View PDF Report
+                                    </button>
+                                </div>
+
+
+                            </div>
                         </div>
-
-
-                    </div>
-                </div>
+                    </>
+                )}
             </div>
         </div>
     );

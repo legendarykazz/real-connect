@@ -1,15 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     LayoutDashboard, Users, FileText, Settings,
     Search, Bell, ChevronDown, CheckCircle2,
-    XCircle, MoreVertical, ShieldCheck, MapPin, Menu, X
+    XCircle, MoreVertical, ShieldCheck, MapPin, Menu, X, UploadCloud
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
+import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/AppContext';
 
 const AdminDashboard = () => {
-    const { listings, agencies, approveListing, rejectListing, toggleAgencyTrust, addListing, addAgency, editAgency } = useAppContext();
+    const { agencies, toggleAgencyTrust, addAgency, editAgency } = useAppContext();
+    const [listings, setListings] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [adminImages, setAdminImages] = useState([]); // For admin post form drag-and-drop
+    const [adminIsDragging, setAdminIsDragging] = useState(false);
     const [activeTab, setActiveTab] = useState('listings'); // 'listings' | 'agencies'
     const [showPostForm, setShowPostForm] = useState(false);
     const [showAgencyForm, setShowAgencyForm] = useState(false);
@@ -20,6 +24,56 @@ const AdminDashboard = () => {
         name: '',
         contact: ''
     });
+
+    // Fetch listings from Supabase
+    const fetchListings = async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('properties')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setListings(data || []);
+        } catch (error) {
+            console.error('Error fetching listings:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    React.useEffect(() => {
+        fetchListings();
+    }, []);
+
+    const handleApproveListing = async (id) => {
+        try {
+            const { error } = await supabase
+                .from('properties')
+                .update({ status: 'approved' })
+                .eq('id', id);
+
+            if (error) throw error;
+            fetchListings(); // Refresh list
+        } catch (error) {
+            alert('Failed to approve property: ' + error.message);
+        }
+    };
+
+    const handleRejectListing = async (id) => {
+        try {
+            const { error } = await supabase
+                .from('properties')
+                .update({ status: 'rejected' })
+                .eq('id', id);
+
+            if (error) throw error;
+            fetchListings(); // Refresh list
+        } catch (error) {
+            alert('Failed to reject property: ' + error.message);
+        }
+    };
 
     const handleAgencySubmit = (e) => {
         e.preventDefault();
@@ -57,26 +111,57 @@ const AdminDashboard = () => {
         submitter: 'Admin Post',
     });
 
-    const handlePostSubmit = (e) => {
+    const handlePostSubmit = async (e) => {
         e.preventDefault();
-        addListing(newListing);
-        setShowPostForm(false);
-        setNewListing({
-            title: '',
-            location: '',
-            size: '',
-            price: '',
-            propertyType: 'Residential',
-            titleDocument: 'C of O',
-            description: '',
-            image: 'https://images.unsplash.com/photo-1518557984649-0d36c5339c0e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-            images: [],
-            documents: [],
-            features: ['Verified by Admin'],
-            status: 'Approved',
-            agencyId: 'Admin',
-            submitter: 'Admin Post',
-        });
+        let imageUrl = newListing.image; // Default fallback image
+        try {
+            // Upload image if one was dropped
+            if (adminImages.length > 0) {
+                const img = adminImages[0];
+                const fileExt = img.name.split('.').pop();
+                const fileName = `admin/${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage
+                    .from('property-images')
+                    .upload(fileName, img.file, { upsert: true });
+
+                if (!uploadError) {
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('property-images')
+                        .getPublicUrl(fileName);
+                    imageUrl = publicUrl;
+                }
+            }
+            const { error } = await supabase
+                .from('properties')
+                .insert([{
+                    first_name: 'Admin',
+                    last_name: 'User',
+                    email: 'admin@realconnect.com',
+                    phone: '0000000',
+                    property_type: newListing.propertyType,
+                    location: newListing.location,
+                    size: newListing.size,
+                    price: newListing.price,
+                    title_document: newListing.titleDocument,
+                    description: newListing.description,
+                    status: 'approved',
+                    image_url: imageUrl
+                }]);
+
+            if (error) throw error;
+
+            setShowPostForm(false);
+            fetchListings();
+            setNewListing({
+                title: '', location: '', size: '', price: '', propertyType: 'Residential',
+                titleDocument: 'C of O', description: '',
+                image: 'https://images.unsplash.com/photo-1518557984649-0d36c5339c0e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                images: [], documents: [], features: ['Verified by Admin'],
+                status: 'Approved', agencyId: 'Admin', submitter: 'Admin Post',
+            });
+        } catch (error) {
+            alert('Error posting property: ' + error.message);
+        }
     };
 
     return (
@@ -109,9 +194,9 @@ const AdminDashboard = () => {
                     >
                         <FileText className="w-5 h-5 mr-3" />
                         Pending Listings
-                        {listings.filter(l => l.status === 'Pending').length > 0 && (
+                        {listings.filter(l => l.status === 'pending').length > 0 && (
                             <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                                {listings.filter(l => l.status === 'Pending').length}
+                                {listings.filter(l => l.status === 'pending').length}
                             </span>
                         )}
                     </button>
@@ -282,53 +367,49 @@ const AdminDashboard = () => {
                                     </select>
                                 </div>
 
-                                <div className="space-y-1">
-                                    <label className="text-sm font-bold text-gray-700">Upload Images</label>
-                                    <div className="border border-gray-200 p-2 rounded-lg relative overflow-hidden bg-white flex items-center h-[46px]">
+
+                                {/* Drag & Drop Image Zone for Admin */}
+                                <div className="md:col-span-2 lg:col-span-3 space-y-2">
+                                    <label className="text-sm font-bold text-gray-700">Upload Property Photo (Drag & Drop)</label>
+                                    <div
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            setAdminIsDragging(false);
+                                            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                                            setAdminImages(files.map(f => ({ file: f, preview: URL.createObjectURL(f), name: f.name })));
+                                        }}
+                                        onDragOver={(e) => { e.preventDefault(); setAdminIsDragging(true); }}
+                                        onDragLeave={() => setAdminIsDragging(false)}
+                                        className={`relative border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer ${adminIsDragging ? 'border-brand-green bg-green-50' : 'border-gray-200 hover:border-brand-green hover:bg-gray-50'}`}
+                                    >
                                         <input
-                                            type="file"
-                                            accept="image/*"
-                                            multiple
+                                            type="file" accept="image/*" multiple
                                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                             onChange={(e) => {
-                                                const files = Array.from(e.target.files);
-                                                if (files.length > 0) {
-                                                    const newUrls = files.map(f => URL.createObjectURL(f));
-                                                    setNewListing({
-                                                        ...newListing,
-                                                        image: newUrls[0], // primary image
-                                                        images: [...newListing.images, ...newUrls]
-                                                    });
-                                                }
+                                                const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+                                                setAdminImages(files.map(f => ({ file: f, preview: URL.createObjectURL(f), name: f.name })));
                                             }}
                                         />
-                                        <span className="text-gray-500 text-sm pointer-events-none w-full truncate px-2">
-                                            {newListing.images.length > 0 ? `${newListing.images.length} Image(s) selected` : 'Choose Photos...'}
-                                        </span>
+                                        <UploadCloud className={`w-8 h-8 mx-auto mb-2 ${adminIsDragging ? 'text-brand-green' : 'text-gray-400'}`} />
+                                        <p className="text-sm font-semibold text-gray-500">
+                                            {adminImages.length > 0 ? `${adminImages.length} photo(s) selected` : (adminIsDragging ? 'Drop image here!' : 'Drag & drop or click to browse')}
+                                        </p>
                                     </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-sm font-bold text-gray-700">Upload Documents</label>
-                                    <div className="border border-gray-200 p-2 rounded-lg relative overflow-hidden bg-white flex items-center h-[46px]">
-                                        <input
-                                            type="file"
-                                            accept=".pdf,.doc,.docx"
-                                            multiple
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                            onChange={(e) => {
-                                                const files = Array.from(e.target.files);
-                                                if (files.length > 0) {
-                                                    setNewListing({
-                                                        ...newListing,
-                                                        documents: [...newListing.documents, ...files.map(f => f.name)]
-                                                    });
-                                                }
-                                            }}
-                                        />
-                                        <span className="text-gray-500 text-sm pointer-events-none w-full truncate px-2">
-                                            {newListing.documents.length > 0 ? `${newListing.documents.length} Doc(s) selected` : 'Choose Documents...'}
-                                        </span>
-                                    </div>
+                                    {/* Admin Image Previews */}
+                                    {adminImages.length > 0 && (
+                                        <div className="flex gap-3 mt-2 flex-wrap">
+                                            {adminImages.map((img, i) => (
+                                                <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 group">
+                                                    <img src={img.preview} className="w-full h-full object-cover" alt="preview" />
+                                                    <button type="button" onClick={() => setAdminImages(prev => prev.filter((_, j) => j !== i))}
+                                                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                        <X className="w-4 h-4 text-white" />
+                                                    </button>
+                                                    {i === 0 && <span className="absolute bottom-0.5 left-0.5 bg-brand-green text-white text-[9px] px-1 rounded font-bold">Cover</span>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="md:col-span-2 lg:col-span-3 pt-4 border-t border-gray-100">
@@ -354,35 +435,37 @@ const AdminDashboard = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {listings.map((listing) => (
+                                    {loading ? (
+                                        <tr><td colSpan="5" className="text-center py-8 text-gray-500">Loading listings...</td></tr>
+                                    ) : listings.map((listing) => (
                                         <tr key={listing.id} className="hover:bg-gray-50/50 transition-colors">
                                             <td className="px-6 py-4">
-                                                <p className="font-bold text-brand-dark">{listing.title}</p>
-                                                <p className="text-sm text-gray-500 font-mono mt-1">{listing.id} • {listing.date}</p>
+                                                <p className="font-bold text-brand-dark">{listing.property_type} in {listing.location}</p>
+                                                <p className="text-sm text-gray-500 font-mono mt-1">{listing.id.substring(0, 8)} • {new Date(listing.created_at).toLocaleDateString()}</p>
                                             </td>
-                                            <td className="px-6 py-4 text-gray-700">{listing.submitter}</td>
-                                            <td className="px-6 py-4 font-semibold text-brand-dark">{listing.price}</td>
+                                            <td className="px-6 py-4 text-gray-700">{listing.first_name} {listing.last_name}</td>
+                                            <td className="px-6 py-4 font-semibold text-brand-dark">₦ {listing.price}</td>
                                             <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${listing.status === 'Approved' ? 'bg-green-50 text-brand-green border-green-200' :
-                                                    listing.status === 'Rejected' ? 'bg-red-50 text-red-600 border-red-200' :
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${listing.status === 'approved' ? 'bg-green-50 text-brand-green border-green-200' :
+                                                    listing.status === 'rejected' ? 'bg-red-50 text-red-600 border-red-200' :
                                                         'bg-yellow-50 text-yellow-700 border-yellow-200'
                                                     }`}>
-                                                    {listing.status === 'Approved' && <CheckCircle2 className="w-3 h-3 mr-1" />}
-                                                    {listing.status === 'Rejected' && <XCircle className="w-3 h-3 mr-1" />}
-                                                    {listing.status}
+                                                    {listing.status === 'approved' && <CheckCircle2 className="w-3 h-3 mr-1" />}
+                                                    {listing.status === 'rejected' && <XCircle className="w-3 h-3 mr-1" />}
+                                                    <span className="capitalize">{listing.status}</span>
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center justify-end space-x-2">
-                                                    <button onClick={() => alert("Opening listing details modal...")} className="px-3 py-1.5 text-sm font-semibold text-brand-light-blue hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100">
+                                                    <button onClick={() => alert(`Details:\n\nLocation: ${listing.location}\nType: ${listing.property_type}\nDesc: ${listing.description}\nContact: ${listing.phone} / ${listing.email}`)} className="px-3 py-1.5 text-sm font-semibold text-brand-light-blue hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100">
                                                         Review
                                                     </button>
-                                                    {listing.status === 'Pending' && (
+                                                    {listing.status === 'pending' && (
                                                         <>
-                                                            <button onClick={() => approveListing(listing.id)} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors border border-transparent hover:border-green-100" title="Approve">
+                                                            <button onClick={() => handleApproveListing(listing.id)} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors border border-transparent hover:border-green-100" title="Approve">
                                                                 <CheckCircle2 className="w-5 h-5" />
                                                             </button>
-                                                            <button onClick={() => rejectListing(listing.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100" title="Reject">
+                                                            <button onClick={() => handleRejectListing(listing.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100" title="Reject">
                                                                 <XCircle className="w-5 h-5" />
                                                             </button>
                                                         </>
