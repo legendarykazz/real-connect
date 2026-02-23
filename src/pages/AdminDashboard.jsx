@@ -90,44 +90,44 @@ const AdminDashboard = () => {
         }
     };
 
-    // ---- FETCH USERS (from properties submitters) ----
+    // ---- FETCH USERS (All registered users) ----
     const fetchUsers = async () => {
         setUsersLoading(true);
         try {
-            // Get unique submitters from properties table
-            const { data, error } = await supabase
-                .from('properties')
-                .select('email, first_name, last_name, phone, user_id, created_at')
+            // 1. Fetch ALL users from custom view
+            const { data: allUsers, error: usersErr } = await supabase
+                .from('admin_users_view')
+                .select('*')
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
+            if (usersErr) throw usersErr;
 
-            // Fetch verified profiles
-            const { data: profiles } = await supabase
-                .from('user_profiles')
-                .select('user_id, is_verified');
-            const profileMap = {};
-            (profiles || []).forEach(p => { profileMap[p.user_id] = p.is_verified; });
+            // 2. Count listings per user (for the "Listings" column)
+            const { data: props, error: propsErr } = await supabase
+                .from('properties')
+                .select('user_id');
 
-            // Deduplicate by email
-            const uniqueUsers = [];
-            const seen = new Set();
-            (data || []).forEach(p => {
-                if (!seen.has(p.email)) {
-                    seen.add(p.email);
-                    uniqueUsers.push({
-                        id: p.user_id,
-                        email: p.email,
-                        name: `${p.first_name} ${p.last_name}`,
-                        phone: p.phone,
-                        joinedAt: p.created_at,
-                        isAdmin: ADMIN_EMAILS.includes(p.email),
-                        isVerified: profileMap[p.user_id] || false,
-                        totalListings: (data || []).filter(x => x.email === p.email).length,
-                    });
-                }
+            if (propsErr) throw propsErr;
+
+            // Group listings by user_id
+            const listingCounts = {};
+            (props || []).forEach(p => {
+                listingCounts[p.user_id] = (listingCounts[p.user_id] || 0) + 1;
             });
-            setUsers(uniqueUsers);
+
+            // 3. Format into our state array
+            const formattedUsers = (allUsers || []).map(u => ({
+                id: u.id,
+                email: u.email,
+                name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Unknown User',
+                phone: u.phone || '—',
+                joinedAt: u.created_at,
+                isAdmin: ADMIN_EMAILS.includes(u.email),
+                isVerified: u.is_verified,
+                totalListings: listingCounts[u.id] || 0,
+            }));
+
+            setUsers(formattedUsers);
         } catch (err) {
             console.error('Error fetching users:', err);
         } finally {
@@ -620,10 +620,10 @@ const AdminDashboard = () => {
                                                                 value={listing.availability || 'available'}
                                                                 onChange={(e) => handleSetAvailability(listing.id, e.target.value)}
                                                                 className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border cursor-pointer focus:outline-none ${(listing.availability || 'available') === 'available'
-                                                                        ? 'bg-green-50 text-brand-green border-green-200'
-                                                                        : listing.availability === 'sold'
-                                                                            ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                                                            : 'bg-gray-100 text-gray-500 border-gray-200'
+                                                                    ? 'bg-green-50 text-brand-green border-green-200'
+                                                                    : listing.availability === 'sold'
+                                                                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                                                        : 'bg-gray-100 text-gray-500 border-gray-200'
                                                                     }`}
                                                             >
                                                                 <option value="available">✅ Available</option>
@@ -963,8 +963,8 @@ const AdminDashboard = () => {
                                         <p className="text-xs text-gray-400 mt-0.5">{selectedListing.property_type} · {selectedListing.size} sqm</p>
                                     </div>
                                     <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-bold border capitalize ${selectedListing.status === 'pending' ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                                            : selectedListing.status === 'approved' ? 'bg-green-100 text-brand-green border-green-200'
-                                                : 'bg-red-100 text-red-600 border-red-200'
+                                        : selectedListing.status === 'approved' ? 'bg-green-100 text-brand-green border-green-200'
+                                            : 'bg-red-100 text-red-600 border-red-200'
                                         }`}>{selectedListing.status}</span>
                                 </div>
                                 <p className="text-xl font-extrabold text-brand-dark">₦{selectedListing.price}</p>

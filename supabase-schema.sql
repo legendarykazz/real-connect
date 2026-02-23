@@ -155,3 +155,22 @@ CREATE POLICY "public_read_profiles"
 
 -- Enable realtime for the properties table
 ALTER PUBLICATION supabase_realtime ADD TABLE properties;
+
+-- ================================================================
+-- STEP 8: Create Secure View for Admin to see ALL Users
+-- ================================================================
+-- We want admins to see every user in auth.users, even if they haven't uploaded properties.
+CREATE OR REPLACE VIEW admin_users_view AS
+SELECT 
+    au.id, 
+    au.email, 
+    au.created_at,
+    au.raw_user_meta_data->>'first_name' as first_name,
+    au.raw_user_meta_data->>'last_name' as last_name,
+    au.raw_user_meta_data->>'phone' as phone,
+    COALESCE(up.is_verified, false) as is_verified
+FROM auth.users au
+LEFT JOIN user_profiles up ON au.id = up.user_id;
+
+-- Grant access to authenticated users (we will filter in frontend/RLS)
+GRANT SELECT ON admin_users_view TO authenticated;
