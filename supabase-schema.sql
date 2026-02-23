@@ -32,10 +32,16 @@ CREATE POLICY "admin_read_all"
     auth.email() IN ('amjustsam28@gmail.com', 'zephaniahmusa99@gmail.com')
   );
 
--- Policy 3: ANY authenticated user can INSERT (submit a listing)
+-- Policy 3: ANY authenticated user can INSERT (submit a listing), unless blocked
 CREATE POLICY "authenticated_insert"
   ON properties FOR INSERT
-  WITH CHECK (auth.role() = 'authenticated');
+  WITH CHECK (
+    auth.role() = 'authenticated' AND
+    NOT EXISTS (
+      SELECT 1 FROM user_profiles 
+      WHERE user_id = auth.uid() AND is_blocked = true
+    )
+  );
 
 -- Policy 4: Admins can UPDATE any listing (approve/reject)
 CREATE POLICY "admin_update_all"
@@ -79,28 +85,40 @@ CREATE POLICY "public_read_images"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'property-images');
 
--- Allow ANY authenticated user to UPLOAD images, docs, videos
+-- Allow ANY authenticated user to UPLOAD images, docs, videos (unless blocked)
 CREATE POLICY "authenticated_upload"
   ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'property-images' AND
-    auth.role() = 'authenticated'
+    auth.role() = 'authenticated' AND
+    NOT EXISTS (
+      SELECT 1 FROM public.user_profiles 
+      WHERE user_id = auth.uid() AND is_blocked = true
+    )
   );
 
--- Allow users to DELETE their own uploads (optional)
+-- Allow users to DELETE their own uploads (unless blocked)
 CREATE POLICY "authenticated_delete_own"
   ON storage.objects FOR DELETE
   USING (
     bucket_id = 'property-images' AND
-    auth.role() = 'authenticated'
+    auth.role() = 'authenticated' AND
+    NOT EXISTS (
+      SELECT 1 FROM public.user_profiles 
+      WHERE user_id = auth.uid() AND is_blocked = true
+    )
   );
 
--- Allow ANY authenticated user to UPDATE their own uploads
+-- Allow ANY authenticated user to UPDATE their own uploads (unless blocked)
 CREATE POLICY "authenticated_update_own"
   ON storage.objects FOR UPDATE
   USING (
     bucket_id = 'property-images' AND
-    auth.role() = 'authenticated'
+    auth.role() = 'authenticated' AND
+    NOT EXISTS (
+      SELECT 1 FROM public.user_profiles 
+      WHERE user_id = auth.uid() AND is_blocked = true
+    )
   );
 
 -- ================================================================
