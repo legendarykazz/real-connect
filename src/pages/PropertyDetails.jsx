@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import {
     ArrowLeft, Share2, Heart, Map, ImageIcon,
     CheckCircle2, FileText, ShieldCheck, Download, ExternalLink,
-    MessageCircle, Phone, Calendar as CalendarIcon, FileCheck
+    MessageCircle, Phone, Calendar as CalendarIcon, FileCheck, Mail
 } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { REALCONNECT_CONTACT } from '../lib/contact';
 
 const PropertyDetails = () => {
     const { id } = useParams();
@@ -108,15 +109,10 @@ const PropertyDetails = () => {
     };
 
     const handleScheduleInspection = () => {
-        const phone = property.seller.phone.replace(/[^0-9]/g, '');
-        if (phone) {
-            const msg = encodeURIComponent(
-                `Hello, I am interested in scheduling an inspection for: ${property.title} (${property.location}). Please let me know your available dates.`
-            );
-            window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
-        } else {
-            alert('No contact number available. Please use the Contact Agent button.');
-        }
+        const msg = encodeURIComponent(
+            `Hello RealConnect, I am interested in scheduling a land inspection for: ${property.title} (${property.location}). Please let me know your available dates.`
+        );
+        window.open(`https://wa.me/${REALCONNECT_CONTACT.whatsapp}?text=${msg}`, '_blank');
     };
 
     const handleViewDocument = (doc) => {
@@ -265,18 +261,14 @@ const PropertyDetails = () => {
                                     )}
 
                                     <div className="mt-auto space-y-3">
-                                        {property.seller.phone && (
-                                            <a href={`tel:${property.seller.phone.replace(/[^0-9+]/g, '')}`}
-                                                className="w-full bg-brand-light-blue hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors flex justify-center items-center">
-                                                <Phone className="w-5 h-5 mr-2" /> Contact Agent
-                                            </a>
-                                        )}
-                                        {property.seller.phone && (
-                                            <a href={`https://wa.me/${property.seller.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer"
-                                                className="w-full bg-brand-green hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors flex justify-center items-center">
-                                                <MessageCircle className="w-5 h-5 mr-2" /> Chat on WhatsApp
-                                            </a>
-                                        )}
+                                        <a href={`tel:${REALCONNECT_CONTACT.phone}`}
+                                            className="w-full bg-brand-light-blue hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors flex justify-center items-center">
+                                            <Phone className="w-5 h-5 mr-2" /> Contact RealConnect
+                                        </a>
+                                        <a href={`https://wa.me/${REALCONNECT_CONTACT.whatsapp}?text=${encodeURIComponent(`Hello RealConnect, I am interested in this property: ${property?.title} (${property?.location}). Please send me more details.`)}`} target="_blank" rel="noopener noreferrer"
+                                            className="w-full bg-brand-green hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors flex justify-center items-center">
+                                            <MessageCircle className="w-5 h-5 mr-2" /> WhatsApp Us
+                                        </a>
                                         <button onClick={handleScheduleInspection}
                                             className="w-full bg-white hover:bg-gray-50 text-brand-dark border border-gray-200 font-bold py-4 rounded-xl transition-colors flex justify-center items-center">
                                             <CalendarIcon className="w-5 h-5 mr-2" /> Schedule Inspection
@@ -382,24 +374,20 @@ const PropertyDetails = () => {
                                     </button>
                                 </div>
 
-                                {/* Seller Info */}
+                                {/* RealConnect Contact Card */}
                                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                                    <h2 className="text-lg font-bold mb-4">Seller</h2>
-                                    <div className="flex items-center gap-4 mb-4">
-                                        <div className="w-12 h-12 rounded-full bg-brand-green/10 text-brand-green flex items-center justify-center font-bold text-lg shrink-0">
-                                            {property.seller.name?.[0]?.toUpperCase() || 'S'}
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-brand-dark">{property.seller.name}</p>
-                                            <p className="text-sm text-gray-400">{property.seller.type}</p>
-                                        </div>
-                                    </div>
-                                    {property.seller.phone && (
-                                        <a href={`tel:${property.seller.phone.replace(/[^0-9+]/g, '')}`}
+                                    <h2 className="text-lg font-bold mb-4">Listed via RealConnect</h2>
+                                    <p className="text-sm text-gray-500 mb-4">All enquiries go through RealConnect to protect buyers and sellers alike. Contact us to get full details and arrange a viewing.</p>
+                                    <div className="space-y-3">
+                                        <a href={`tel:${REALCONNECT_CONTACT.phone}`}
                                             className="w-full bg-gray-50 hover:bg-gray-100 border border-gray-200 text-brand-dark font-semibold py-3 rounded-xl transition-colors flex justify-center items-center text-sm">
-                                            <Phone className="w-4 h-4 mr-2" /> {property.seller.phone}
+                                            <Phone className="w-4 h-4 mr-2" /> {REALCONNECT_CONTACT.phone}
                                         </a>
-                                    )}
+                                        <a href={`mailto:${REALCONNECT_CONTACT.email}`}
+                                            className="w-full bg-gray-50 hover:bg-gray-100 border border-gray-200 text-brand-dark font-semibold py-3 rounded-xl transition-colors flex justify-center items-center text-sm">
+                                            <Mail className="w-4 h-4 mr-2" /> {REALCONNECT_CONTACT.email}
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
