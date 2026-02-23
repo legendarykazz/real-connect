@@ -58,7 +58,7 @@ const AdminDashboard = () => {
     const uploadFile = async (file, folder) => {
         const ext = file.name.split('.').pop();
         const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error } = await supabase.storage.from('property-images').upload(path, file, { upsert: true });
+        const { error } = await supabase.storage.from('property-images').upload(path, file, { upsert: false });
         if (error) throw new Error('Upload failed: ' + error.message);
         return supabase.storage.from('property-images').getPublicUrl(path).data.publicUrl;
     };

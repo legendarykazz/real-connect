@@ -15,7 +15,7 @@ const ImageDropZone = ({ images, setImages }) => {
             preview: URL.createObjectURL(file),
             name: file.name
         }));
-        setImages(prev => [...prev, ...newImages]);
+        setImages([...images, ...newImages]);
     };
 
     const handleDrop = useCallback((e) => {
@@ -38,10 +38,8 @@ const ImageDropZone = ({ images, setImages }) => {
     };
 
     const removeImage = (index) => {
-        setImages(prev => {
-            URL.revokeObjectURL(prev[index].preview);
-            return prev.filter((_, i) => i !== index);
-        });
+        URL.revokeObjectURL(images[index].preview);
+        setImages(images.filter((_, i) => i !== index));
     };
 
     return (
@@ -128,7 +126,7 @@ const ListProperty = () => {
         const uploadFile = async (file, folder) => {
             const ext = file.name.split('.').pop();
             const path = `${user.id}/${folder}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-            const { error } = await supabase.storage.from('property-images').upload(path, file, { upsert: true });
+            const { error } = await supabase.storage.from('property-images').upload(path, file, { upsert: false });
             if (error) throw new Error('Upload failed: ' + error.message);
             return supabase.storage.from('property-images').getPublicUrl(path).data.publicUrl;
         };
