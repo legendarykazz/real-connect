@@ -117,3 +117,29 @@ ALTER TABLE properties
 -- ================================================================
 -- Done! All policies are now set correctly.
 -- ================================================================
+
+-- ================================================================
+-- STEP 6: Create user_profiles table for admin verified toggle
+-- ================================================================
+CREATE TABLE IF NOT EXISTS user_profiles (
+  user_id UUID PRIMARY KEY,
+  email TEXT,
+  is_verified BOOLEAN DEFAULT false,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Enable RLS
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+
+-- Admins can read/write all profiles
+CREATE POLICY IF NOT EXISTS "admin_manage_profiles"
+  ON user_profiles FOR ALL
+  USING (
+    auth.role() = 'authenticated' AND
+    auth.email() IN ('amjustsam28@gmail.com', 'zephaniahmusa99@gmail.com')
+  );
+
+-- Anyone can read profiles (so verified badge can show on listings)
+CREATE POLICY IF NOT EXISTS "public_read_profiles"
+  ON user_profiles FOR SELECT
+  USING (true);

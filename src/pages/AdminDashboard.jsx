@@ -33,6 +33,7 @@ const AdminDashboard = () => {
     // Users state
     const [users, setUsers] = useState([]);
     const [usersLoading, setUsersLoading] = useState(false);
+    const [togglingVerified, setTogglingVerified] = useState(null);
 
     // Settings state
     const [adminList, setAdminList] = useState([...ADMIN_EMAILS]);
@@ -92,6 +93,13 @@ const AdminDashboard = () => {
 
             if (error) throw error;
 
+            // Fetch verified profiles
+            const { data: profiles } = await supabase
+                .from('user_profiles')
+                .select('user_id, is_verified');
+            const profileMap = {};
+            (profiles || []).forEach(p => { profileMap[p.user_id] = p.is_verified; });
+
             // Deduplicate by email
             const uniqueUsers = [];
             const seen = new Set();
@@ -105,6 +113,7 @@ const AdminDashboard = () => {
                         phone: p.phone,
                         joinedAt: p.created_at,
                         isAdmin: ADMIN_EMAILS.includes(p.email),
+                        isVerified: profileMap[p.user_id] || false,
                         totalListings: (data || []).filter(x => x.email === p.email).length,
                     });
                 }
@@ -114,6 +123,26 @@ const AdminDashboard = () => {
             console.error('Error fetching users:', err);
         } finally {
             setUsersLoading(false);
+        }
+    };
+
+    // ---- TOGGLE USER VERIFIED ----
+    const handleToggleVerified = async (u) => {
+        setTogglingVerified(u.id);
+        const newVal = !u.isVerified;
+        // Optimistic UI update
+        setUsers(prev => prev.map(x => x.id === u.id ? { ...x, isVerified: newVal } : x));
+        try {
+            const { error } = await supabase
+                .from('user_profiles')
+                .upsert({ user_id: u.id, email: u.email, is_verified: newVal }, { onConflict: 'user_id' });
+            if (error) throw error;
+        } catch (err) {
+            alert('Error updating verified status: ' + err.message);
+            // Revert on error
+            setUsers(prev => prev.map(x => x.id === u.id ? { ...x, isVerified: u.isVerified } : x));
+        } finally {
+            setTogglingVerified(null);
         }
     };
 
@@ -584,6 +613,7 @@ const AdminDashboard = () => {
                                                     <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Phone</th>
                                                     <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Listings</th>
                                                     <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Role</th>
+                                                    <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Verified</th>
                                                     <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Joined</th>
                                                 </tr>
                                             </thead>
@@ -602,7 +632,10 @@ const AdminDashboard = () => {
                                                                     {u.name?.[0]?.toUpperCase() || '?'}
                                                                 </div>
                                                                 <div>
-                                                                    <p className="font-semibold">{u.name}</p>
+                                                                    <p className="font-semibold flex items-center gap-1.5">
+                                                                        {u.name}
+                                                                        {u.isVerified && <span title="Verified" className="text-brand-green">✅</span>}
+                                                                    </p>
                                                                     <p className="text-xs text-gray-400">{u.email}</p>
                                                                 </div>
                                                             </div>
@@ -616,6 +649,18 @@ const AdminDashboard = () => {
                                                                 ? <span className="flex items-center gap-1.5 text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100"><Shield className="w-3.5 h-3.5" />Admin</span>
                                                                 : <span className="flex items-center gap-1.5 text-xs font-bold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-full"><UserCheck className="w-3.5 h-3.5" />Seller</span>
                                                             }
+                                                        </td>
+                                                        <td className="px-5 py-4">
+                                                            <button
+                                                                onClick={() => handleToggleVerified(u)}
+                                                                disabled={togglingVerified === u.id}
+                                                                title={u.isVerified ? 'Click to unverify' : 'Click to verify'}
+                                                                className={`w-12 h-6 rounded-full relative transition-all duration-200 disabled:opacity-50 ${u.isVerified ? 'bg-brand-green' : 'bg-gray-200'
+                                                                    }`}
+                                                            >
+                                                                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${u.isVerified ? 'left-7' : 'left-1'
+                                                                    }`} />
+                                                            </button>
                                                         </td>
                                                         <td className="px-5 py-4 text-gray-400 text-xs">
                                                             {new Date(u.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
