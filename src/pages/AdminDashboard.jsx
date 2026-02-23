@@ -43,6 +43,11 @@ const AdminDashboard = () => {
     const [users, setUsers] = useState([]);
     const [usersLoading, setUsersLoading] = useState(false);
     const [togglingVerified, setTogglingVerified] = useState(null);
+    const [togglingBlocked, setTogglingBlocked] = useState(null);
+
+    // Users filters
+    const [userSearch, setUserSearch] = useState('');
+    const [sellersOnly, setSellersOnly] = useState(false);
 
     // Settings state
     const [adminList, setAdminList] = useState([...ADMIN_EMAILS]);
@@ -124,6 +129,7 @@ const AdminDashboard = () => {
                 joinedAt: u.created_at,
                 isAdmin: ADMIN_EMAILS.includes(u.email),
                 isVerified: u.is_verified,
+                isBlocked: u.is_blocked || false,
                 totalListings: listingCounts[u.id] || 0,
             }));
 
@@ -152,6 +158,29 @@ const AdminDashboard = () => {
             setUsers(prev => prev.map(x => x.id === u.id ? { ...x, isVerified: u.isVerified } : x));
         } finally {
             setTogglingVerified(null);
+        }
+    };
+
+    // ---- TOGGLE USER BLOCKED ----
+    const handleToggleBlocked = async (u) => {
+        // Prevent admins from blocking themselves or other admins
+        if (u.isAdmin) return;
+
+        setTogglingBlocked(u.id);
+        const newVal = !u.isBlocked;
+        // Optimistic UI update
+        setUsers(prev => prev.map(x => x.id === u.id ? { ...x, isBlocked: newVal } : x));
+        try {
+            const { error } = await supabase
+                .from('user_profiles')
+                .upsert({ user_id: u.id, email: u.email, is_blocked: newVal }, { onConflict: 'user_id' });
+            if (error) throw error;
+        } catch (err) {
+            alert('Error toggling block status: ' + err.message);
+            // Revert on error
+            setUsers(prev => prev.map(x => x.id === u.id ? { ...x, isBlocked: u.isBlocked } : x));
+        } finally {
+            setTogglingBlocked(null);
         }
     };
 
@@ -682,9 +711,31 @@ const AdminDashboard = () => {
                     {
                         activeTab === 'users' && (
                             <div>
-                                <div className="mb-6">
-                                    <h1 className="text-2xl font-bold">Users & Sellers</h1>
-                                    <p className="text-gray-500 text-sm mt-1">Everyone who has submitted a property listing</p>
+                                <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div>
+                                        <h1 className="text-2xl font-bold">Users & Sellers</h1>
+                                        <p className="text-gray-500 text-sm mt-1">Manage registered accounts and agency verifications</p>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                            <input
+                                                type="text"
+                                                placeholder="Search name or email..."
+                                                value={userSearch}
+                                                onChange={(e) => setUserSearch(e.target.value)}
+                                                className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-green w-full sm:w-64"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={() => setSellersOnly(!sellersOnly)}
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors border ${sellersOnly ? 'bg-brand-green text-white border-brand-green' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            <UserCheck className="w-4 h-4" />
+                                            Sellers Only
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                                     <div className="overflow-x-auto">
@@ -697,58 +748,80 @@ const AdminDashboard = () => {
                                                     <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Role</th>
                                                     <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Verified</th>
                                                     <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Joined</th>
+                                                    <th className="text-right px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50">
                                                 {usersLoading && (
-                                                    <tr><td colSpan={5} className="text-center py-12 text-gray-400">Loading users...</td></tr>
+                                                    <tr><td colSpan={6} className="text-center py-12 text-gray-400">Loading users...</td></tr>
                                                 )}
                                                 {!usersLoading && users.length === 0 && (
-                                                    <tr><td colSpan={5} className="text-center py-12 text-gray-400">No users have submitted listings yet.</td></tr>
+                                                    <tr><td colSpan={6} className="text-center py-12 text-gray-400">No users found.</td></tr>
                                                 )}
-                                                {!usersLoading && users.map((u, i) => (
-                                                    <tr key={i} className="hover:bg-gray-50/50">
-                                                        <td className="px-5 py-4">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-9 h-9 rounded-full bg-brand-green/10 text-brand-green flex items-center justify-center font-bold text-sm shrink-0">
-                                                                    {u.name?.[0]?.toUpperCase() || '?'}
+                                                {!usersLoading && users
+                                                    .filter(u => {
+                                                        const matchSearch = (u.name || '').toLowerCase().includes(userSearch.toLowerCase()) ||
+                                                            (u.email || '').toLowerCase().includes(userSearch.toLowerCase());
+                                                        const matchSeller = sellersOnly ? u.totalListings > 0 : true;
+                                                        return matchSearch && matchSeller;
+                                                    })
+                                                    .map((u, i) => (
+                                                        <tr key={i} className="hover:bg-gray-50/50">
+                                                            <td className="px-5 py-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-9 h-9 rounded-full bg-brand-green/10 text-brand-green flex items-center justify-center font-bold text-sm shrink-0">
+                                                                        {u.name?.[0]?.toUpperCase() || '?'}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="font-semibold flex items-center gap-1.5">
+                                                                            {u.name}
+                                                                            {u.isVerified && <span title="Verified" className="text-brand-green">✅</span>}
+                                                                        </p>
+                                                                        <p className="text-xs text-gray-400">{u.email}</p>
+                                                                    </div>
                                                                 </div>
-                                                                <div>
-                                                                    <p className="font-semibold flex items-center gap-1.5">
-                                                                        {u.name}
-                                                                        {u.isVerified && <span title="Verified" className="text-brand-green">✅</span>}
-                                                                    </p>
-                                                                    <p className="text-xs text-gray-400">{u.email}</p>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-5 py-4 text-gray-600">{u.phone}</td>
-                                                        <td className="px-5 py-4">
-                                                            <span className="bg-gray-100 text-gray-700 font-bold px-2.5 py-1 rounded-full text-xs">{u.totalListings}</span>
-                                                        </td>
-                                                        <td className="px-5 py-4">
-                                                            {u.isAdmin
-                                                                ? <span className="flex items-center gap-1.5 text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100"><Shield className="w-3.5 h-3.5" />Admin</span>
-                                                                : <span className="flex items-center gap-1.5 text-xs font-bold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-full"><UserCheck className="w-3.5 h-3.5" />Seller</span>
-                                                            }
-                                                        </td>
-                                                        <td className="px-5 py-4">
-                                                            <button
-                                                                onClick={() => handleToggleVerified(u)}
-                                                                disabled={togglingVerified === u.id}
-                                                                title={u.isVerified ? 'Click to unverify' : 'Click to verify'}
-                                                                className={`w-12 h-6 rounded-full relative transition-all duration-200 disabled:opacity-50 ${u.isVerified ? 'bg-brand-green' : 'bg-gray-200'
-                                                                    }`}
-                                                            >
-                                                                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${u.isVerified ? 'left-7' : 'left-1'
-                                                                    }`} />
-                                                            </button>
-                                                        </td>
-                                                        <td className="px-5 py-4 text-gray-400 text-xs">
-                                                            {new Date(u.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                        </td>
-                                                    </tr>
-                                                ))}
+                                                            </td>
+                                                            <td className="px-5 py-4 text-gray-600">{u.phone}</td>
+                                                            <td className="px-5 py-4">
+                                                                <span className="bg-gray-100 text-gray-700 font-bold px-2.5 py-1 rounded-full text-xs">{u.totalListings}</span>
+                                                            </td>
+                                                            <td className="px-5 py-4">
+                                                                {u.isAdmin
+                                                                    ? <span className="flex items-center gap-1.5 text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100"><Shield className="w-3.5 h-3.5" />Admin</span>
+                                                                    : <span className="flex items-center gap-1.5 text-xs font-bold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-full"><UserCheck className="w-3.5 h-3.5" />Seller</span>
+                                                                }
+                                                            </td>
+                                                            <td className="px-5 py-4">
+                                                                <button
+                                                                    onClick={() => handleToggleVerified(u)}
+                                                                    disabled={togglingVerified === u.id}
+                                                                    title={u.isVerified ? 'Click to unverify' : 'Click to verify'}
+                                                                    className={`w-12 h-6 rounded-full relative transition-all duration-200 disabled:opacity-50 ${u.isVerified ? 'bg-brand-green' : 'bg-gray-200'
+                                                                        }`}
+                                                                >
+                                                                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${u.isVerified ? 'left-7' : 'left-1'
+                                                                        }`} />
+                                                                </button>
+                                                            </td>
+                                                            <td className="px-5 py-4 text-gray-400 text-xs">
+                                                                {new Date(u.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                            </td>
+                                                            <td className="px-5 py-4 text-right">
+                                                                {!u.isAdmin && (
+                                                                    <button
+                                                                        onClick={() => handleToggleBlocked(u)}
+                                                                        disabled={togglingBlocked === u.id}
+                                                                        className={`px-3 py-1.5 border rounded-lg text-xs font-bold transition-colors ${u.isBlocked
+                                                                            ? 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
+                                                                            : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100'
+                                                                            }`}
+                                                                    >
+                                                                        {togglingBlocked === u.id ? '...' : u.isBlocked ? 'Unblock' : 'Block User'}
+                                                                    </button>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
                                             </tbody>
                                         </table>
                                     </div>

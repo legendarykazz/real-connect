@@ -5,6 +5,8 @@ import { LogIn, UserPlus, Lock, Mail, AlertCircle, CheckCircle2, Chrome } from '
 
 const Login = () => {
     const [isLogin, setIsLogin] = useState(true);
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -30,8 +32,10 @@ const Login = () => {
                     email,
                     password,
                     options: {
-                        // Supabase will send a confirmation email automatically
-                        // as long as "Confirm email" is enabled in your Supabase project settings
+                        data: {
+                            first_name: firstName,
+                            last_name: lastName,
+                        }
                     }
                 });
                 if (error) throw error;
@@ -132,6 +136,29 @@ const Login = () => {
 
                             {/* Email / Password form */}
                             <form className="space-y-5" onSubmit={handleAuth}>
+                                {!isLogin && (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                                            <input
+                                                required type="text" value={firstName}
+                                                onChange={(e) => setFirstName(e.target.value)}
+                                                className="block w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all"
+                                                placeholder="John"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                                            <input
+                                                required type="text" value={lastName}
+                                                onChange={(e) => setLastName(e.target.value)}
+                                                className="block w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all"
+                                                placeholder="Doe"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Email address</label>
                                     <div className="relative">

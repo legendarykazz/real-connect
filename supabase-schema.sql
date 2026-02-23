@@ -119,14 +119,18 @@ ALTER TABLE properties
 -- ================================================================
 
 -- ================================================================
--- STEP 6: Create user_profiles table for admin verified toggle
+-- STEP 6: Create user_profiles table for admin verified toggle & blocking
 -- ================================================================
 CREATE TABLE IF NOT EXISTS user_profiles (
   user_id UUID PRIMARY KEY,
   email TEXT,
   is_verified BOOLEAN DEFAULT false,
+  is_blocked BOOLEAN DEFAULT false,
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- For existing tables without is_blocked:
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT false;
 
 -- Enable RLS
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
@@ -168,7 +172,8 @@ SELECT
     au.raw_user_meta_data->>'first_name' as first_name,
     au.raw_user_meta_data->>'last_name' as last_name,
     au.raw_user_meta_data->>'phone' as phone,
-    COALESCE(up.is_verified, false) as is_verified
+    COALESCE(up.is_verified, false) as is_verified,
+    COALESCE(up.is_blocked, false) as is_blocked
 FROM auth.users au
 LEFT JOIN user_profiles up ON au.id = up.user_id;
 
