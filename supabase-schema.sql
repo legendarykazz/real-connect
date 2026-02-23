@@ -131,8 +131,12 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 -- Enable RLS
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 
+-- Drop old policies if they exist
+DROP POLICY IF EXISTS "admin_manage_profiles" ON user_profiles;
+DROP POLICY IF EXISTS "public_read_profiles" ON user_profiles;
+
 -- Admins can read/write all profiles
-CREATE POLICY IF NOT EXISTS "admin_manage_profiles"
+CREATE POLICY "admin_manage_profiles"
   ON user_profiles FOR ALL
   USING (
     auth.role() = 'authenticated' AND
@@ -140,6 +144,14 @@ CREATE POLICY IF NOT EXISTS "admin_manage_profiles"
   );
 
 -- Anyone can read profiles (so verified badge can show on listings)
-CREATE POLICY IF NOT EXISTS "public_read_profiles"
+CREATE POLICY "public_read_profiles"
   ON user_profiles FOR SELECT
   USING (true);
+
+-- ================================================================
+-- STEP 7: Enable Supabase Realtime on properties table
+-- Required for admin notification system (new pending post alerts)
+-- ================================================================
+
+-- Enable realtime for the properties table
+ALTER PUBLICATION supabase_realtime ADD TABLE properties;
