@@ -144,7 +144,7 @@ export default function PropertyDetailsScreen() {
             {/* Bottom Action Bar */}
             <View className="bg-white px-6 py-4 border-t border-gray-100 flex-row justify-between items-center shadow-lg pb-8">
                 <TouchableOpacity
-                    onPress={() => Linking.openURL(`tel:${property.phone || '+234812383164'}`)}
+                    onPress={() => Linking.openURL(`tel:+234812383164`)}
                     className="bg-brand-dark flex-row items-center justify-center flex-1 py-4 rounded-xl mr-3"
                 >
                     <Phone color="white" size={20} />
@@ -152,7 +152,7 @@ export default function PropertyDetailsScreen() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    onPress={() => Linking.openURL(`mailto:${property.email || 'realconnectpropertyhub@gmail.com'}`)}
+                    onPress={() => Linking.openURL(`mailto:realconnectpropertyhub@gmail.com`)}
                     className="bg-brand-light-blue p-4 rounded-xl"
                 >
                     <Mail color="#0f172a" size={24} />
