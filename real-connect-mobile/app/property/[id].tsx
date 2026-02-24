@@ -101,8 +101,8 @@ export default function PropertyDetailsScreen() {
                     </View>
 
                     {/* Description */}
-                    <View className="mb-8">
-                        <Text className="text-lg font-bold text-brand-dark mb-3">About this property</Text>
+                    <View className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-8">
+                        <Text className="text-lg font-bold text-brand-dark mb-3">Property Description</Text>
                         <Text className="text-gray-600 leading-relaxed text-base">
                             {property.description || "No description provided."}
                         </Text>
