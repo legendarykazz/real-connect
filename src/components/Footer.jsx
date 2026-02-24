@@ -27,11 +27,11 @@ const Footer = () => {
                         <ul className="space-y-4">
                             <li className="flex items-center text-gray-300 hover:text-brand-green transition-colors cursor-pointer">
                                 <Mail className="w-5 h-5 mr-3 shrink-0" />
-                                <span>info@realconnect.com</span>
+                                <span>realconnectpropertyhub@gmail.com</span>
                             </li>
                             <li className="flex items-center text-gray-300 hover:text-brand-green transition-colors cursor-pointer">
                                 <Phone className="w-5 h-5 mr-3 shrink-0" />
-                                <span>+234 XXX XXX XXXX</span>
+                                <span>+234812383164</span>
                             </li>
                             <li className="flex items-center text-gray-300">
                                 <MapPin className="w-5 h-5 mr-3 shrink-0" />
