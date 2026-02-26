@@ -6,6 +6,8 @@ import PropertyDetails from './pages/PropertyDetails';
 import ListProperty from './pages/ListProperty';
 import AdminDashboard from './pages/AdminDashboard';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -60,6 +62,8 @@ function App() {
               <Route path="/property/:id" element={<PropertyDetails />} />
               <Route path="/list-property" element={<ListProperty />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               {/* Admin: only the owner email can access */}
               <Route path="/admin" element={
                 <AdminRoute>

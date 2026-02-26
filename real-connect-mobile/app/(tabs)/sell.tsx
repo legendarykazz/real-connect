@@ -132,7 +132,8 @@ export default function SellScreen() {
                 video_urls: videoUrls,
                 document_urls: docUrls,
                 status: 'pending',
-                title: `${size} in ${location}`
+                property_type: 'Land',
+                description: `${size} in ${location}`
             });
 
             if (error) throw error;

@@ -99,7 +99,14 @@ export default function LoginScreen() {
                         onChangeText={setEmail}
                     />
 
-                    <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">Password</Text>
+                    <View className="flex-row justify-between items-center mb-1">
+                        <Text className="text-sm font-bold text-gray-700 ml-1">Password</Text>
+                        {isLogin && (
+                            <TouchableOpacity onPress={() => router.push('/forgot-password' as any)}>
+                                <Text className="text-sm font-bold text-brand-green mr-1">Forgot?</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                     <TextInput
                         className="bg-gray-50 rounded-xl px-4 py-3 mb-6 text-brand-dark"
                         placeholder="••••••••"
