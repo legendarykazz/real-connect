@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from 'expo-router';
-import { X } from 'lucide-react-native';
+import { X, ChevronDown } from 'lucide-react-native';
 import Footer from '../../components/Footer';
 import { decode } from 'base64-arraybuffer';
+import { Picker } from '@react-native-picker/picker';
 
 export default function SellScreen() {
     const { user } = useAuth();
@@ -16,6 +17,9 @@ export default function SellScreen() {
     const [location, setLocation] = useState('');
     const [size, setSize] = useState('');
     const [price, setPrice] = useState('');
+    const [propertyType, setPropertyType] = useState('Residential');
+    const [titleDocument, setTitleDocument] = useState('C of O');
+    const [description, setDescription] = useState('');
     const [images, setImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
     const [videos, setVideos] = useState<ImagePicker.ImagePickerAsset[]>([]);
     const [docs, setDocs] = useState<any[]>([]);
@@ -91,7 +95,7 @@ export default function SellScreen() {
 
     const handleSubmit = async () => {
         if (!location || !size || !price) {
-            Alert.alert('Error', 'Please fill in all details');
+            Alert.alert('Error', 'Please fill in Location, Size, and Price details');
             return;
         }
 
@@ -124,22 +128,29 @@ export default function SellScreen() {
             setUploadStatus('Saving Listing...');
             const { error } = await supabase.from('properties').insert({
                 user_id: user?.id,
+                first_name: user?.user_metadata?.first_name || 'User',
+                last_name: user?.user_metadata?.last_name || '',
+                email: user?.email || '',
+                phone: user?.user_metadata?.phone || '',
                 location,
                 size,
                 price: parseFloat(price.replace(/,/g, '')),
+                property_type: propertyType,
+                title_document: titleDocument,
+                description: description || `${size} in ${location} (${titleDocument})`,
                 image_url: imageUrls[0] || null,
                 image_urls: imageUrls,
                 video_urls: videoUrls,
                 document_urls: docUrls,
                 status: 'pending',
-                property_type: 'Land',
-                description: `${size} in ${location}`
+                poster_type: 'user',
+                is_verified: false,
             });
 
             if (error) throw error;
 
             Alert.alert('Success', 'Property submitted for review!');
-            setLocation(''); setSize(''); setPrice(''); setImages([]); setVideos([]); setDocs([]);
+            setLocation(''); setSize(''); setPrice(''); setDescription(''); setPropertyType('Residential'); setTitleDocument('C of O'); setImages([]); setVideos([]); setDocs([]);
             router.replace('/(tabs)');
         } catch (error: any) {
             Alert.alert('Upload Error', error.message);
@@ -230,11 +241,57 @@ export default function SellScreen() {
                     <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">Location *</Text>
                     <TextInput className="bg-white rounded-xl px-4 py-4 mb-4 border border-gray-100 text-brand-dark font-medium shadow-sm" placeholder="e.g. Lekki, Lagos" placeholderTextColor="#9ca3af" value={location} onChangeText={setLocation} />
 
-                    <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">Size (Plots/Acres) *</Text>
+                    <View className="flex-row gap-4 mb-4">
+                        <View className="flex-1">
+                            <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">Property Type *</Text>
+                            <View className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden h-14 justify-center">
+                                <Picker
+                                    selectedValue={propertyType}
+                                    onValueChange={(itemValue) => setPropertyType(itemValue)}
+                                    style={{ height: '100%', color: '#111827' }}
+                                >
+                                    <Picker.Item label="Residential" value="Residential" />
+                                    <Picker.Item label="Commercial" value="Commercial" />
+                                    <Picker.Item label="Agricultural" value="Agricultural" />
+                                    <Picker.Item label="Mixed Use" value="Mixed Use" />
+                                </Picker>
+                            </View>
+                        </View>
+
+                        <View className="flex-1">
+                            <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">Title Document *</Text>
+                            <View className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden h-14 justify-center">
+                                <Picker
+                                    selectedValue={titleDocument}
+                                    onValueChange={(itemValue) => setTitleDocument(itemValue)}
+                                    style={{ height: '100%', color: '#111827' }}
+                                >
+                                    <Picker.Item label="C of O" value="C of O" />
+                                    <Picker.Item label="Governor's Consent" value="Governor's Consent" />
+                                    <Picker.Item label="Excision / Gazette" value="Excision / Gazette" />
+                                    <Picker.Item label="Registered Deed" value="Registered Deed" />
+                                </Picker>
+                            </View>
+                        </View>
+                    </View>
+
+                    <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">Size (sqm / plots) *</Text>
                     <TextInput className="bg-white rounded-xl px-4 py-4 mb-4 border border-gray-100 text-brand-dark font-medium shadow-sm" placeholder="e.g. 2 Plots or 1.5 Acres" placeholderTextColor="#9ca3af" value={size} onChangeText={setSize} />
 
                     <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">Price (₦) *</Text>
-                    <TextInput className="bg-white rounded-xl px-4 py-4 mb-8 border border-gray-100 text-brand-dark font-medium shadow-sm" placeholder="e.g. 20000000" placeholderTextColor="#9ca3af" keyboardType="numeric" value={price} onChangeText={setPrice} />
+                    <TextInput className="bg-white rounded-xl px-4 py-4 mb-4 border border-gray-100 text-brand-dark font-medium shadow-sm" placeholder="e.g. 20000000" placeholderTextColor="#9ca3af" keyboardType="numeric" value={price} onChangeText={setPrice} />
+
+                    <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">Description</Text>
+                    <TextInput
+                        className="bg-white rounded-xl px-4 py-4 mb-8 border border-gray-100 text-brand-dark font-medium shadow-sm text-left align-top"
+                        placeholder="Brief description about the land..."
+                        placeholderTextColor="#9ca3af"
+                        value={description}
+                        onChangeText={setDescription}
+                        multiline={true}
+                        numberOfLines={4}
+                        style={{ height: 100 }}
+                    />
 
                     <TouchableOpacity onPress={handleSubmit} disabled={loading} className={`bg-brand-dark py-4 rounded-xl items-center shadow-md border border-gray-800 ${loading ? 'opacity-70' : ''}`}>
                         {loading ? <View className="flex-row items-center"><ActivityIndicator color="white" className="mr-3" /><Text className="text-white font-bold">{uploadStatus || 'Submitting...'}</Text></View> : <Text className="text-white font-bold text-lg">Submit Listing</Text>}

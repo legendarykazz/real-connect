@@ -1,11 +1,94 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
+import { Bell, CheckCircle2, XCircle, Info } from 'lucide-react';
 
 const Navbar = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
     const { user, signOut } = useAuth();
     const navigate = useNavigate();
+    const notifRef = useRef(null);
+
+    // Close notifications click outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (notifRef.current && !notifRef.current.contains(event.target)) {
+                setIsNotificationsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Fetch and subscribe to notifications
+    useEffect(() => {
+        if (!user) {
+            setNotifications([]);
+            setUnreadCount(0);
+            return;
+        }
+
+        const fetchNotifications = async () => {
+            const { data, error } = await supabase
+                .from('notifications')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            if (!error && data) {
+                setNotifications(data);
+                setUnreadCount(data.filter(n => !n.is_read).length);
+            }
+        };
+
+        fetchNotifications();
+
+        // Subscribe to real-time new notifications
+        const channel = supabase
+            .channel(`public:notifications:user_id=eq.${user.id}`)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'notifications',
+                filter: `user_id=eq.${user.id}`
+            }, (payload) => {
+                setNotifications(prev => [payload.new, ...prev].slice(0, 10));
+                setUnreadCount(prev => prev + 1);
+            })
+            .subscribe();
+
+        return () => supabase.removeChannel(channel);
+    }, [user]);
+
+    const handleMarkAsRead = async (id) => {
+        // Optimistic update
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+
+        await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .eq('id', id)
+            .eq('user_id', user?.id);
+    };
+
+    const handleMarkAllAsRead = async () => {
+        if (unreadCount === 0) return;
+
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+        setUnreadCount(0);
+
+        await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .eq('user_id', user?.id)
+            .eq('is_read', false);
+    };
 
     const handleLogout = async () => {
         await signOut();
@@ -24,6 +107,14 @@ const Navbar = () => {
         }
     };
 
+    const getNotificationIcon = (type) => {
+        switch (type) {
+            case 'approved': return <CheckCircle2 className="w-5 h-5 text-brand-green mt-0.5 shrink-0" />;
+            case 'rejected': return <XCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />;
+            default: return <Info className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />;
+        }
+    };
+
     return (
         <nav className="fixed w-full z-50 bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-100">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -39,10 +130,73 @@ const Navbar = () => {
                         <Link to="/list-property" className="text-brand-dark hover:text-brand-green font-medium transition-colors">List Property</Link>
 
                         {user ? (
-                            <>
+                            <div className="flex items-center space-x-6">
                                 <Link to="/admin" className="text-brand-dark hover:text-brand-green font-medium transition-colors">Dashboard</Link>
+
+                                {/* Notification Bell */}
+                                <div className="relative" ref={notifRef}>
+                                    <button
+                                        onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                                        className="relative p-2 text-gray-500 hover:text-brand-green transition-colors rounded-full hover:bg-gray-100"
+                                    >
+                                        <Bell className="w-6 h-6" />
+                                        {unreadCount > 0 && (
+                                            <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white">
+                                                {unreadCount > 9 ? '9+' : unreadCount}
+                                            </span>
+                                        )}
+                                    </button>
+
+                                    {/* Notification Dropdown */}
+                                    {isNotificationsOpen && (
+                                        <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50">
+                                            <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
+                                                <h3 className="font-bold text-gray-800">Notifications</h3>
+                                                {unreadCount > 0 && (
+                                                    <button onClick={handleMarkAllAsRead} className="text-xs text-brand-green font-medium hover:underline">
+                                                        Mark all as read
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="max-h-96 overflow-y-auto">
+                                                {notifications.length === 0 ? (
+                                                    <div className="px-4 py-8 text-center text-gray-400 text-sm">
+                                                        No notifications yet.
+                                                    </div>
+                                                ) : (
+                                                    <div className="divide-y divide-gray-50">
+                                                        {notifications.map((notif) => (
+                                                            <div
+                                                                key={notif.id}
+                                                                onClick={() => !notif.is_read && handleMarkAsRead(notif.id)}
+                                                                className={`p-4 flex gap-3 hover:bg-gray-50 transition-colors cursor-pointer ${!notif.is_read ? 'bg-blue-50/30' : ''}`}
+                                                            >
+                                                                {getNotificationIcon(notif.type)}
+                                                                <div>
+                                                                    <p className={`text-sm mb-1 ${!notif.is_read ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>
+                                                                        {notif.title}
+                                                                    </p>
+                                                                    <p className="text-xs text-gray-500 leading-relaxed mb-1">
+                                                                        {notif.message}
+                                                                    </p>
+                                                                    <p className="text-[10px] text-gray-400 font-medium">
+                                                                        {new Date(notif.created_at).toLocaleDateString()} at {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                    </p>
+                                                                </div>
+                                                                {!notif.is_read && (
+                                                                    <span className="w-2 h-2 rounded-full bg-brand-green shrink-0 mt-1.5 ml-auto"></span>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 font-medium transition-colors">Logout</button>
-                            </>
+                            </div>
                         ) : (
                             <Link to="/login" className="text-brand-dark hover:text-brand-green font-medium transition-colors">Login</Link>
                         )}
@@ -52,7 +206,22 @@ const Navbar = () => {
                         </button>
                     </div>
 
-                    <div className="md:hidden flex items-center">
+                    <div className="md:hidden flex items-center gap-4">
+                        {/* Mobile Bell Icon */}
+                        {user && (
+                            <button
+                                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                                className="relative p-2 text-gray-500 hover:text-brand-green transition-colors"
+                            >
+                                <Bell className="w-6 h-6" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white">
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                    </span>
+                                )}
+                            </button>
+                        )}
+
                         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-brand-dark hover:text-brand-green p-2 transition-colors">
                             {isMobileMenuOpen ? (
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,6 +235,44 @@ const Navbar = () => {
                         </button>
                     </div>
                 </div>
+
+                {/* Mobile Notification Dropdown */}
+                {user && isNotificationsOpen && (
+                    <div className="md:hidden border-t border-gray-100 bg-white">
+                        <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
+                            <h3 className="font-bold text-gray-800">Notifications</h3>
+                            {unreadCount > 0 && (
+                                <button onClick={handleMarkAllAsRead} className="text-xs text-brand-green font-medium">Mark all as read</button>
+                            )}
+                        </div>
+                        <div className="max-h-80 overflow-y-auto">
+                            {notifications.length === 0 ? (
+                                <div className="px-4 py-8 text-center text-gray-400 text-sm">No notifications yet.</div>
+                            ) : (
+                                <div className="divide-y divide-gray-50">
+                                    {notifications.map((notif) => (
+                                        <div
+                                            key={notif.id}
+                                            onClick={() => !notif.is_read && handleMarkAsRead(notif.id)}
+                                            className={`p-4 flex gap-3 ${!notif.is_read ? 'bg-blue-50/30' : ''}`}
+                                        >
+                                            {getNotificationIcon(notif.type)}
+                                            <div>
+                                                <p className={`text-sm mb-1 ${!notif.is_read ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>
+                                                    {notif.title}
+                                                </p>
+                                                <p className="text-xs text-gray-500 leading-relaxed mb-1">{notif.message}</p>
+                                                <p className="text-[10px] text-gray-400 font-medium">
+                                                    {new Date(notif.created_at).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Mobile Menu Dropdown */}
                 {isMobileMenuOpen && (
