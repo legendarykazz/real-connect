@@ -7,6 +7,7 @@ import {
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import MapCoordinatePicker from '../components/MapCoordinatePicker';
 
 // ---- ADMIN EMAILS (must match App.jsx) ----
 const ADMIN_EMAILS = [
@@ -67,6 +68,8 @@ const AdminDashboard = () => {
         posterType: 'admin',  // 'admin' | 'agency'
         agencyName: '',
         isVerified: true,
+        latitude: null,
+        longitude: null,
     });
 
     // Helper to upload a file to Supabase Storage and return its public URL
@@ -281,6 +284,8 @@ const AdminDashboard = () => {
                 title_document: newListing.titleDocument,
                 description: newListing.description,
                 status: 'approved',
+                latitude: newListing.latitude,
+                longitude: newListing.longitude,
                 image_url: imageUrls[0] || null,
                 image_urls: imageUrls,
                 document_urls: docUrls,
@@ -294,7 +299,7 @@ const AdminDashboard = () => {
             setAdminImages([]); setAdminDocs([]); setAdminVideos([]);
             setPostSuccess(true);
             setTimeout(() => setPostSuccess(false), 3000);
-            setNewListing({ location: '', size: '', price: '', propertyType: 'Residential', titleDocument: 'C of O', description: '', posterType: 'admin', agencyName: '', isVerified: true });
+            setNewListing({ location: '', size: '', price: '', propertyType: 'Residential', titleDocument: 'C of O', description: '', posterType: 'admin', agencyName: '', isVerified: true, latitude: null, longitude: null });
             fetchListings();
         } catch (err) {
             alert('Error posting property: ' + err.message);
@@ -467,6 +472,12 @@ const AdminDashboard = () => {
                                                 <input required value={newListing.location} onChange={e => setNewListing({ ...newListing, location: e.target.value })}
                                                     className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-green outline-none"
                                                     placeholder="e.g. Plot 5, Lekki Phase 2, Lagos" />
+                                            </div>
+                                            <div className="md:col-span-2 lg:col-span-3">
+                                                <MapCoordinatePicker
+                                                    coordinates={{ lat: newListing.latitude, lng: newListing.longitude }}
+                                                    setCoordinates={(pos) => setNewListing({ ...newListing, latitude: pos.lat, longitude: pos.lng })}
+                                                />
                                             </div>
                                             <div className="space-y-1">
                                                 <label className="text-xs font-bold text-gray-600">Property Type *</label>

@@ -3,6 +3,7 @@ import { Camera, MapPin, CheckCircle2, ChevronRight, UploadCloud, Info, ShieldCh
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import MapCoordinatePicker from '../components/MapCoordinatePicker';
 
 // --- Drag & Drop Image Upload Component ---
 const ImageDropZone = ({ images, setImages }) => {
@@ -99,6 +100,7 @@ const ListProperty = () => {
     const [images, setImages] = useState([]); // [{file, preview, name}] — max 4
     const [docs, setDocs] = useState([]);     // [{file, name, size}] — max 2
     const [videos, setVideos] = useState([]); // [{file, preview, name}] — max 2
+    const [coordinates, setCoordinates] = useState({ lat: null, lng: null });
     const [formData, setFormData] = useState({
         firstName: '', lastName: '', email: '', phone: '',
         propertyType: 'Residential', location: '', size: '', price: '',
@@ -151,6 +153,8 @@ const ListProperty = () => {
                     phone: formData.phone,
                     property_type: formData.propertyType,
                     location: formData.location,
+                    latitude: coordinates.lat,
+                    longitude: coordinates.lng,
                     size: formData.size,
                     price: formData.price,
                     title_document: formData.titleDocument,
@@ -266,6 +270,9 @@ const ListProperty = () => {
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Exact Location / Address *</label>
                                 <input required type="text" name="location" value={formData.location} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green transition-all" placeholder="e.g. Plot 12, Block 4, Lekki Phase 1" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <MapCoordinatePicker coordinates={coordinates} setCoordinates={setCoordinates} />
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Property Type *</label>

@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Lin
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { MapPin, Phone, Mail, ArrowLeft, Ruler, Calendar, Play } from 'lucide-react-native';
+import MapView, { Marker } from 'react-native-maps';
 
 export default function PropertyDetailsScreen() {
     const { id } = useLocalSearchParams();
@@ -107,6 +108,33 @@ export default function PropertyDetailsScreen() {
                             {property.description || "No description provided."}
                         </Text>
                     </View>
+
+                    {/* Map Location */}
+                    {property.latitude && property.longitude && (
+                        <View className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-8">
+                            <Text className="text-lg font-bold text-brand-dark mb-3">Map Location</Text>
+                            <View className="h-48 rounded-xl overflow-hidden border border-gray-200 pointer-events-none">
+                                <MapView
+                                    style={{ flex: 1 }}
+                                    initialRegion={{
+                                        latitude: property.latitude,
+                                        longitude: property.longitude,
+                                        latitudeDelta: 0.05,
+                                        longitudeDelta: 0.05,
+                                    }}
+                                    pitchEnabled={false}
+                                    rotateEnabled={false}
+                                    scrollEnabled={false}
+                                    zoomEnabled={false}
+                                >
+                                    <Marker
+                                        coordinate={{ latitude: property.latitude, longitude: property.longitude }}
+                                        title={property.location}
+                                    />
+                                </MapView>
+                            </View>
+                        </View>
+                    )}
 
                     {/* Media Gallery Grid */}
                     {property.image_urls && property.image_urls.length > 1 && (

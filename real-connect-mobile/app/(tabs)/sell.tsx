@@ -9,6 +9,7 @@ import { X, ChevronDown } from 'lucide-react-native';
 import Footer from '../../components/Footer';
 import { decode } from 'base64-arraybuffer';
 import { Picker } from '@react-native-picker/picker';
+import MapView, { Marker } from 'react-native-maps';
 
 export default function SellScreen() {
     const { user } = useAuth();
@@ -20,11 +21,24 @@ export default function SellScreen() {
     const [propertyType, setPropertyType] = useState('Residential');
     const [titleDocument, setTitleDocument] = useState('C of O');
     const [description, setDescription] = useState('');
-    const [images, setImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
     const [videos, setVideos] = useState<ImagePicker.ImagePickerAsset[]>([]);
     const [docs, setDocs] = useState<any[]>([]);
+    const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+    const [latText, setLatText] = useState('');
+    const [lngText, setLngText] = useState('');
     const [loading, setLoading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState('');
+
+    const handleMapUpdate = (coords: { latitude: number; longitude: number } | null) => {
+        setCoordinates(coords);
+        if (coords) {
+            setLatText(coords.latitude.toString());
+            setLngText(coords.longitude.toString());
+        } else {
+            setLatText('');
+            setLngText('');
+        }
+    };
 
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -138,6 +152,8 @@ export default function SellScreen() {
                 property_type: propertyType,
                 title_document: titleDocument,
                 description: description || `${size} in ${location} (${titleDocument})`,
+                latitude: coordinates?.latitude || null,
+                longitude: coordinates?.longitude || null,
                 image_url: imageUrls[0] || null,
                 image_urls: imageUrls,
                 video_urls: videoUrls,
@@ -150,7 +166,7 @@ export default function SellScreen() {
             if (error) throw error;
 
             Alert.alert('Success', 'Property submitted for review!');
-            setLocation(''); setSize(''); setPrice(''); setDescription(''); setPropertyType('Residential'); setTitleDocument('C of O'); setImages([]); setVideos([]); setDocs([]);
+            setLocation(''); setSize(''); setPrice(''); setDescription(''); setPropertyType('Residential'); setTitleDocument('C of O'); setImages([]); setVideos([]); setDocs([]); handleMapUpdate(null);
             router.replace('/(tabs)');
         } catch (error: any) {
             Alert.alert('Upload Error', error.message);
@@ -240,6 +256,74 @@ export default function SellScreen() {
                     {/* Form Fields */}
                     <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">Location *</Text>
                     <TextInput className="bg-white rounded-xl px-4 py-4 mb-4 border border-gray-100 text-brand-dark font-medium shadow-sm" placeholder="e.g. Lekki, Lagos" placeholderTextColor="#9ca3af" value={location} onChangeText={setLocation} />
+
+                    <View className="flex-row justify-between items-center mb-1 ml-1">
+                        <Text className="text-sm font-bold text-gray-700">Map Pin Location (Optional)</Text>
+                        {coordinates && <Text className="text-xs text-brand-green font-bold">Pin Dropped ✓</Text>}
+                    </View>
+                    <Text className="text-xs text-gray-500 ml-1 mb-2">Tap or hold to drop a pin on the exact location.</Text>
+                    <View className="h-64 rounded-xl overflow-hidden mb-3 border border-gray-200 relative">
+                        <MapView
+                            style={{ flex: 1 }}
+                            initialRegion={{
+                                latitude: 6.5244,
+                                longitude: 3.3792,
+                                latitudeDelta: 0.2,
+                                longitudeDelta: 0.2,
+                            }}
+                            onPress={(e) => handleMapUpdate(e.nativeEvent.coordinate)}
+                            onLongPress={(e) => handleMapUpdate(e.nativeEvent.coordinate)}
+                        >
+                            {coordinates && (
+                                <Marker
+                                    coordinate={coordinates}
+                                    draggable
+                                    onDragEnd={(e) => handleMapUpdate(e.nativeEvent.coordinate)}
+                                />
+                            )}
+                        </MapView>
+                        {coordinates && (
+                            <TouchableOpacity
+                                onPress={() => handleMapUpdate(null)}
+                                className="absolute top-2 right-2 bg-red-500 px-3 py-1.5 rounded-full shadow-sm"
+                            >
+                                <Text className="text-white text-xs font-bold">Clear Pin</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
+                    <View className="flex-row gap-4 mb-6">
+                        <View className="flex-1">
+                            <Text className="text-xs font-bold text-gray-700 mb-1 ml-1">Latitude</Text>
+                            <TextInput
+                                className="bg-white rounded-xl px-4 py-3 border border-gray-100 text-brand-dark font-medium shadow-sm text-sm"
+                                placeholder="e.g. 6.5244"
+                                placeholderTextColor="#9ca3af"
+                                keyboardType="numeric"
+                                value={latText}
+                                onChangeText={(text) => {
+                                    setLatText(text);
+                                    const val = parseFloat(text);
+                                    if (!isNaN(val)) setCoordinates(prev => ({ latitude: val, longitude: prev?.longitude || 0 }));
+                                }}
+                            />
+                        </View>
+                        <View className="flex-1">
+                            <Text className="text-xs font-bold text-gray-700 mb-1 ml-1">Longitude</Text>
+                            <TextInput
+                                className="bg-white rounded-xl px-4 py-3 border border-gray-100 text-brand-dark font-medium shadow-sm text-sm"
+                                placeholder="e.g. 3.3792"
+                                placeholderTextColor="#9ca3af"
+                                keyboardType="numeric"
+                                value={lngText}
+                                onChangeText={(text) => {
+                                    setLngText(text);
+                                    const val = parseFloat(text);
+                                    if (!isNaN(val)) setCoordinates(prev => ({ latitude: prev?.latitude || 0, longitude: val }));
+                                }}
+                            />
+                        </View>
+                    </View>
 
                     <View className="flex-row gap-4 mb-4">
                         <View className="flex-1">

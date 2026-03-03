@@ -7,6 +7,7 @@ import {
 import { Link, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { REALCONNECT_CONTACT } from '../lib/contact';
+import PropertyMapViewer from '../components/PropertyMapViewer';
 
 const PropertyDetails = () => {
     const { id } = useParams();
@@ -74,6 +75,8 @@ const PropertyDetails = () => {
                     documents: realDocs,
                     videoUrls: (data.video_urls || []).filter(Boolean),
                     isVerified: data.is_verified || false,
+                    lat: data.latitude,
+                    lng: data.longitude,
                     seller: {
                         name: sellerName,
                         type: data.poster_type === 'agency' ? 'Agency' : 'Individual',
@@ -225,14 +228,18 @@ const PropertyDetails = () => {
                                         )}
                                     </>
                                 ) : (
-                                    <div className="h-[480px] rounded-2xl overflow-hidden shadow-sm">
-                                        <iframe
-                                            className="w-full h-full border-0"
-                                            loading="lazy"
-                                            allowFullScreen
-                                            src={`https://maps.google.com/maps?q=${encodeURIComponent(property.location)}&z=15&output=embed`}
-                                            title="Property Location"
-                                        />
+                                    <div className="h-[480px] rounded-2xl overflow-hidden shadow-sm relative z-0">
+                                        {property.lat && property.lng ? (
+                                            <PropertyMapViewer lat={property.lat} lng={property.lng} locationName={property.location} />
+                                        ) : (
+                                            <iframe
+                                                className="w-full h-full border-0 absolute inset-0 z-0"
+                                                loading="lazy"
+                                                allowFullScreen
+                                                src={`https://maps.google.com/maps?q=${encodeURIComponent(property.location)}&z=15&output=embed`}
+                                                title="Property Location"
+                                            />
+                                        )}
                                     </div>
                                 )}
                             </div>
