@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from 'expo-router';
@@ -99,13 +100,19 @@ export default function SellScreen() {
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
         const filePath = `${user?.id || 'anonymous'}/${prefix}/${fileName}`;
 
-        const response = await fetch(uri);
-        const arrayBuffer = await response.arrayBuffer();
+        try {
+            const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+            const { error } = await supabase.storage.from('property-images').upload(filePath, decode(base64), {
+                contentType: mimeType
+            });
+            if (error) throw error;
 
-        const { error } = await supabase.storage.from('property-images').upload(filePath, arrayBuffer, { contentType: mimeType });
-        if (error) throw error;
-        const { data: { publicUrl } } = supabase.storage.from('property-images').getPublicUrl(filePath);
-        return publicUrl;
+            const { data: { publicUrl } } = supabase.storage.from('property-images').getPublicUrl(filePath);
+            return publicUrl;
+        } catch (e: any) {
+            console.error('File system upload error:', e);
+            throw new Error(`Failed to process ${prefix} file: ` + e.message);
+        }
     };
 
     const handleSubmit = async () => {
