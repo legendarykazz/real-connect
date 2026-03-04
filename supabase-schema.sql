@@ -182,7 +182,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE properties;
 -- STEP 8: Create Secure View for Admin to see ALL Users
 -- ================================================================
 -- We want admins to see every user in auth.users, even if they haven't uploaded properties.
-CREATE OR REPLACE VIEW admin_users_view AS
+CREATE OR REPLACE VIEW admin_users_view WITH (security_invoker = true) AS
 SELECT 
     au.id, 
     au.email, 

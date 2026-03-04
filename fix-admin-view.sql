@@ -1,7 +1,7 @@
 -- Security Fix: Ensure only admins can query the admin_users_view
 -- Run this in your Supabase SQL Editor to resolve the Advisor Warning!
 
-CREATE OR REPLACE VIEW admin_users_view AS
+CREATE OR REPLACE VIEW admin_users_view WITH (security_invoker = true) AS
 SELECT 
     au.id, 
     au.email, 
