@@ -11,25 +11,26 @@ const ResetPassword = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        // Supabase appends #access_token=... or ?type=recovery
-        const hash = window.location.hash;
-        const search = window.location.search;
+        // Supabase appends #access_token=..., ?type=recovery, or auto-handles it in the background
+        const hash = window.location.hash || '';
+        const search = window.location.search || '';
+
+        console.log("URL Hash:", hash);
+        console.log("URL Search:", search);
 
         // Listen for the hash change which supabase auth helper might trigger
-        supabase.auth.onAuthStateChange((event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log("Auth Event:", event);
             if (event === 'PASSWORD_RECOVERY') {
                 setError(null);
             }
         });
 
-        if (!hash.includes('access_token') && !hash.includes('type=recovery') && !search.includes('type=recovery')) {
-            // It might take a split second for the Supabase client to parse the URL and fire the event
-            // We shouldn't immediately error out if we expect the session to be recovered
-            // But we can check if there's no hash at all
-            if (!hash && !search) {
-                setError("Invalid or expired password reset link.");
-            }
-        }
+        // Remove the strict error checking entirely for now, as Supabase Auth PKCE 
+        // often consumes the URL parameters immediately before React mounts,
+        // leaving the URL completely empty but the session valid.
+
+        return () => subscription.unsubscribe();
     }, []);
 
     const handleUpdatePassword = async (e) => {
