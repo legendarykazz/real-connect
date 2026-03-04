@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Linking } from 'react-native';
-import { Phone, Mail, Instagram, Twitter, Facebook } from 'lucide-react-native';
+import { Phone, Mail, Instagram, Twitter, Facebook, Shield } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 export default function Footer() {
+    const router = useRouter();
     return (
         <View className="bg-brand-dark pt-12 pb-8 px-6 mt-8">
             <View className="mb-8">
@@ -36,7 +38,14 @@ export default function Footer() {
                 </TouchableOpacity>
             </View>
 
-            <View className="border-t border-gray-800 pt-6">
+            <View className="border-t border-gray-800 pt-6 mb-4">
+                <TouchableOpacity
+                    onPress={() => router.push('/privacy-policy' as any)}
+                    className="flex-row items-center justify-center mb-4"
+                >
+                    <Shield color="#9ca3af" size={16} />
+                    <Text className="text-gray-400 ml-2 text-sm font-medium">Privacy Policy</Text>
+                </TouchableOpacity>
                 <Text className="text-gray-500 text-center text-sm">
                     © {new Date().getFullYear()} RealConnect Mobile. All rights reserved.
                 </Text>

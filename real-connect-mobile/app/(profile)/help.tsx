@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Linking } from 'react-native';
-import { ArrowLeft, Phone, Mail, Globe, MapPin } from 'lucide-react-native';
+import { ArrowLeft, Phone, Mail, Globe, MapPin, Shield } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 export default function HelpScreen() {
@@ -54,8 +54,16 @@ export default function HelpScreen() {
                 </View>
 
                 <TouchableOpacity
-                    onPress={() => Linking.openURL('https://realconnect.com')}
-                    className="bg-brand-dark flex-row justify-center items-center py-4 rounded-xl"
+                    onPress={() => router.push('/privacy-policy' as any)}
+                    className="bg-brand-dark flex-row justify-center items-center py-4 rounded-xl mb-4"
+                >
+                    <Shield color="white" size={20} className="mr-2" />
+                    <Text className="text-white font-bold text-lg">Privacy Policy</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    onPress={() => Linking.openURL('https://realconnectafrica.com')}
+                    className="bg-brand-green flex-row justify-center items-center py-4 rounded-xl mb-12"
                 >
                     <Globe color="white" size={20} className="mr-2" />
                     <Text className="text-white font-bold text-lg">Visit our Website</Text>

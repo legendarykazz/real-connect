@@ -52,6 +52,7 @@ export default function RootLayout() {
             <Stack.Screen name="(profile)/my-listings" options={{ headerShown: false }} />
             <Stack.Screen name="(profile)/account-settings" options={{ headerShown: false }} />
             <Stack.Screen name="(profile)/help" options={{ headerShown: false }} />
+            <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
           </Stack>
         </AuthGuard>
       </AuthProvider>

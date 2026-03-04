@@ -270,6 +270,8 @@ export default function SellScreen() {
                         {coordinates && <Text className="text-xs text-brand-green font-bold">Pin Dropped ✓</Text>}
                     </View>
                     <Text className="text-xs text-gray-500 ml-1 mb-2">Tap or hold to drop a pin on the exact location.</Text>
+                    {/* Map View - Temporarily disabled to debug crash. Maps often crash on Android if Google Maps API key is missing in app.json */}
+                    {/* 
                     <View className="h-64 rounded-xl overflow-hidden mb-3 border border-gray-200 relative">
                         <MapView
                             style={{ flex: 1 }}
@@ -299,6 +301,7 @@ export default function SellScreen() {
                             </TouchableOpacity>
                         )}
                     </View>
+                    */}
 
                     <View className="flex-row gap-4 mb-6">
                         <View className="flex-1">
@@ -337,32 +340,26 @@ export default function SellScreen() {
                         <View className="flex-1">
                             <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">Property Type *</Text>
                             <View className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden h-14 justify-center">
-                                <Picker
-                                    selectedValue={propertyType}
-                                    onValueChange={(itemValue) => setPropertyType(itemValue)}
-                                    style={{ height: '100%', color: '#111827' }}
-                                >
-                                    <Picker.Item label="Residential" value="Residential" />
-                                    <Picker.Item label="Commercial" value="Commercial" />
-                                    <Picker.Item label="Agricultural" value="Agricultural" />
-                                    <Picker.Item label="Mixed Use" value="Mixed Use" />
-                                </Picker>
+                                {/* Disabled native picker temporarily to debug crash */}
+                                <TextInput
+                                    className="px-4 py-3 text-brand-dark font-medium"
+                                    value={propertyType}
+                                    onChangeText={setPropertyType}
+                                    placeholder="Enter Type (Residential, etc.)"
+                                />
                             </View>
                         </View>
 
                         <View className="flex-1">
                             <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">Title Document *</Text>
                             <View className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden h-14 justify-center">
-                                <Picker
-                                    selectedValue={titleDocument}
-                                    onValueChange={(itemValue) => setTitleDocument(itemValue)}
-                                    style={{ height: '100%', color: '#111827' }}
-                                >
-                                    <Picker.Item label="C of O" value="C of O" />
-                                    <Picker.Item label="Governor's Consent" value="Governor's Consent" />
-                                    <Picker.Item label="Excision / Gazette" value="Excision / Gazette" />
-                                    <Picker.Item label="Registered Deed" value="Registered Deed" />
-                                </Picker>
+                                {/* Disabled native picker temporarily to debug crash */}
+                                <TextInput
+                                    className="px-4 py-3 text-brand-dark font-medium"
+                                    value={titleDocument}
+                                    onChangeText={setTitleDocument}
+                                    placeholder="Enter Title (C of O, etc.)"
+                                />
                             </View>
                         </View>
                     </View>
