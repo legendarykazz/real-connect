@@ -46,7 +46,7 @@ const Footer = () => {
                             <li><Link to="/browse" className="text-gray-400 hover:text-brand-light-blue transition-colors">Browse Lands</Link></li>
                             <li><Link to="/list-property" className="text-gray-400 hover:text-brand-light-blue transition-colors text-left block w-full">List Property</Link></li>
                             <li><a href="#contact" className="text-gray-400 hover:text-brand-light-blue transition-colors">Contact Us</a></li>
-                            <li><button onClick={() => alert("Loading Privacy Policy...")} className="text-gray-400 hover:text-brand-light-blue transition-colors text-left">Privacy Policy</button></li>
+                            <li><Link to="/privacy" className="text-gray-400 hover:text-brand-light-blue transition-colors text-left block w-full">Privacy Policy</Link></li>
                         </ul>
                     </div>
                 </div>
@@ -57,7 +57,7 @@ const Footer = () => {
                     </p>
                     <div className="flex space-x-6 text-sm text-gray-500">
                         <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-                        <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+                        <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
                     </div>
                 </div>
             </div>
