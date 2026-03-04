@@ -21,6 +21,7 @@ export default function SellScreen() {
     const [propertyType, setPropertyType] = useState('Residential');
     const [titleDocument, setTitleDocument] = useState('C of O');
     const [description, setDescription] = useState('');
+    const [images, setImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
     const [videos, setVideos] = useState<ImagePicker.ImagePickerAsset[]>([]);
     const [docs, setDocs] = useState<any[]>([]);
     const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
