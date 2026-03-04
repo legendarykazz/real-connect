@@ -20,7 +20,7 @@ export default function ForgotPasswordScreen() {
             // We'll configure typical behavior for Supabase.
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
                 // If you have a specific mobile deep link or prefer using the web app URL:
-                redirectTo: 'https://realconnect.vercel.app/reset-password', // or 'realconnectmobile://reset-password'
+                redirectTo: 'https://realconnectafrica.com/reset-password', // or 'realconnectmobile://reset-password'
             });
 
             if (error) throw error;
