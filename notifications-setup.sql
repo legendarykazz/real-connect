@@ -39,7 +39,9 @@ CREATE POLICY "Admins can manage all notifications"
 
 -- STEP 4: Create the Postgres Function (Trigger logic)
 CREATE OR REPLACE FUNCTION public.handle_property_status_change()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+SET search_path = ''
+AS $$
 BEGIN
   -- Only trigger if the status actually changed
   IF OLD.status IS DISTINCT FROM NEW.status THEN
