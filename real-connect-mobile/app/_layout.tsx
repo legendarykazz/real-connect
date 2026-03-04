@@ -23,7 +23,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading) return;
 
-    const inAuthGroup = segments[0] === 'login';
+    const inAuthGroup = segments[0] === 'login' || segments[0] === 'forgot-password';
 
     if (!session && !inAuthGroup) {
       // Redirect to login if user is not authenticated
@@ -47,6 +47,7 @@ export default function RootLayout() {
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="login" options={{ headerShown: false }} />
+            <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
             <Stack.Screen name="property/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="(profile)/my-listings" options={{ headerShown: false }} />
             <Stack.Screen name="(profile)/account-settings" options={{ headerShown: false }} />
