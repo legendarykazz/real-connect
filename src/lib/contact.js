@@ -5,8 +5,8 @@
 // ============================================================
 
 export const REALCONNECT_CONTACT = {
-    phone: '+234812383164',       // ← Replace with your real WhatsApp/phone number
-    whatsapp: '234812383164',     // ← Same number without + for wa.me links
+    phone: '+2348123831634',       // ← Replace with your real WhatsApp/phone number
+    whatsapp: '2348123831634',     // ← Same number without + for wa.me links
     email: 'realconnectpropertyhub@gmail.com',
     name: 'RealConnect',
 };

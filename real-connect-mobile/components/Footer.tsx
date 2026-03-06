@@ -18,7 +18,7 @@ export default function Footer() {
                 <Text className="text-white text-lg font-bold mb-4">Contact Us</Text>
                 <View className="flex-row items-center mb-3">
                     <Phone color="#10b981" size={20} />
-                    <Text className="text-gray-300 ml-3 shrink-0">+234812383164</Text>
+                    <Text className="text-gray-300 ml-3 shrink-0">+2348123831634</Text>
                 </View>
                 <View className="flex-row items-center">
                     <Mail color="#10b981" size={20} />

@@ -172,7 +172,7 @@ export default function PropertyDetailsScreen() {
             {/* Bottom Action Bar */}
             <View className="bg-white px-6 py-4 border-t border-gray-100 flex-row justify-between items-center shadow-lg pb-8">
                 <TouchableOpacity
-                    onPress={() => Linking.openURL(`tel:+234812383164`)}
+                    onPress={() => Linking.openURL(`tel:+2348123831634`)}
                     className="bg-brand-dark flex-row items-center justify-center flex-1 py-4 rounded-xl mr-3"
                 >
                     <Phone color="white" size={20} />

@@ -23,13 +23,13 @@ export default function HelpScreen() {
 
                 <View className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
                     <TouchableOpacity
-                        onPress={() => Linking.openURL('tel:+234812383164')}
+                        onPress={() => Linking.openURL('tel:+2348123831634')}
                         className="px-6 py-5 border-b border-gray-100 flex-row items-center"
                     >
                         <View className="bg-blue-50 p-3 rounded-full mr-4"><Phone color="#3b82f6" size={20} /></View>
                         <View>
                             <Text className="text-lg font-bold text-brand-dark mb-1">Call Support</Text>
-                            <Text className="text-gray-500">+234812383164</Text>
+                            <Text className="text-gray-500">+2348123831634</Text>
                         </View>
                     </TouchableOpacity>
 

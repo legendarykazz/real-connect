@@ -31,7 +31,7 @@ const Footer = () => {
                             </li>
                             <li className="flex items-center text-gray-300 hover:text-brand-green transition-colors cursor-pointer">
                                 <Phone className="w-5 h-5 mr-3 shrink-0" />
-                                <span>+234812383164</span>
+                                <span>+2348123831634</span>
                             </li>
                             <li className="flex items-center text-gray-300">
                                 <MapPin className="w-5 h-5 mr-3 shrink-0" />
