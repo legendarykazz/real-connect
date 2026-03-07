@@ -19,6 +19,10 @@ const AdminVerifications = () => {
                     id,
                     user_id,
                     status,
+                    full_name,
+                    address,
+                    email,
+                    phone,
                     id_type,
                     id_number,
                     id_document_url,
@@ -26,13 +30,7 @@ const AdminVerifications = () => {
                     selfie_url,
                     rejection_reason,
                     created_at,
-                    updated_at,
-                    user_profiles:user_id (
-                        first_name,
-                        last_name,
-                        email,
-                        phone
-                    )
+                    updated_at
                 `)
                 .order('created_at', { ascending: false });
 
@@ -189,11 +187,11 @@ const AdminVerifications = () => {
                                         <td className="px-5 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                                                    {userProfile.first_name?.[0] || '?'}
+                                                    {(req.full_name || '?')[0].toUpperCase()}
                                                 </div>
                                                 <div>
-                                                    <p className="font-semibold">{userProfile.first_name} {userProfile.last_name}</p>
-                                                    <p className="text-xs text-gray-400">{userProfile.email} • {userProfile.phone}</p>
+                                                    <p className="font-semibold">{req.full_name || 'Unknown User'}</p>
+                                                    <p className="text-xs text-gray-400">{req.email || 'No Email'} • {req.phone || 'No Phone'}</p>
                                                 </div>
                                             </div>
                                         </td>
@@ -230,7 +228,7 @@ const AdminVerifications = () => {
                                 <h3 className="text-xl font-bold flex items-center gap-2">
                                     <ShieldCheck className="text-brand-green" /> Verification Review
                                 </h3>
-                                <p className="text-sm text-gray-500 mt-1">Reviewing submission for {selectedRequest.user_profiles?.first_name} {selectedRequest.user_profiles?.last_name}</p>
+                                <p className="text-sm text-gray-500 mt-1">Reviewing submission for {selectedRequest.full_name}</p>
                             </div>
                             <button onClick={() => { setSelectedRequest(null); setRejectReason(''); }} className="p-2 text-gray-400 hover:text-brand-dark bg-gray-100 rounded-full">
                                 <XCircle className="w-6 h-6" />
@@ -272,9 +270,10 @@ const AdminVerifications = () => {
                                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                                     <h4 className="font-bold mb-3 text-sm uppercase text-gray-500">Applicant Details</h4>
                                     <div className="space-y-2 text-sm">
-                                        <p><span className="text-gray-500">Name:</span> <strong>{selectedRequest.user_profiles?.first_name} {selectedRequest.user_profiles?.last_name}</strong></p>
-                                        <p><span className="text-gray-500">Email:</span> <br />{selectedRequest.user_profiles?.email}</p>
-                                        <p><span className="text-gray-500">Phone:</span> {selectedRequest.user_profiles?.phone}</p>
+                                        <p><span className="text-gray-500">Name:</span> <strong>{selectedRequest.full_name}</strong></p>
+                                        <p><span className="text-gray-500">Address:</span> <br />{selectedRequest.address}</p>
+                                        <p><span className="text-gray-500">Email:</span> <br />{selectedRequest.email}</p>
+                                        <p><span className="text-gray-500">Phone:</span> {selectedRequest.phone}</p>
                                         <p className="pt-2 mt-2 border-t border-gray-200"><span className="text-gray-500">Status:</span> <StatusBadge status={selectedRequest.status} /></p>
                                     </div>
                                 </div>

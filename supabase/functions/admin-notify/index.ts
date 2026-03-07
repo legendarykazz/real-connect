@@ -32,6 +32,8 @@ serve(async (req) => {
         const record = payload.record || payload // The newly inserted row data
         const tableName = payload.table || (record.property_type ? 'properties' : (record.id_type ? 'user_verifications' : 'unknown'))
 
+        console.log(`Detected event for table: ${tableName}`);
+
         let emailSubject = '';
         let emailHtml = '';
 
@@ -51,8 +53,8 @@ serve(async (req) => {
                 </ul>
                 <p>Please log in to the <a href="https://realconnect-platform.vercel.app/admin">Admin Dashboard</a> to review and approve or reject this listing.</p>
             `;
-        } else if (payload.table === 'user_verifications') {
-            emailSubject = `Shield New KYC Verification Request`;
+        } else if (tableName === 'user_verifications') {
+            emailSubject = `🛡️ RealConnect: New KYC Verification Request`;
             emailHtml = `
                  <h2>New KYC Verification Request</h2>
                  <p>A user has submitted their documents for identity verification.</p>

@@ -206,14 +206,21 @@ const AdminDashboard = () => {
             .channel('admin-pending-alerts')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'properties' }, (payload) => {
                 if (payload.new?.status === 'pending') {
-                    // Refresh list
                     fetchListings();
-                    // Show toast
-                    setToastMsg(`🔔 New listing submitted by ${payload.new.first_name || 'a user'}! Review now.`);
+                    setToastMsg(`🏠 New property listing by ${payload.new.first_name || 'a user'}! Review now.`);
                     setBellAlerts(n => n + 1);
                     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
                     toastTimerRef.current = setTimeout(() => setToastMsg(null), 7000);
                 }
+            })
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'user_verifications' }, (payload) => {
+                // Refresh count
+                fetchPendingVerificationsCount();
+                // Show toast
+                setToastMsg(`🛡️ New KYC verification request submitted! Review now.`);
+                setBellAlerts(n => n + 1);
+                if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+                toastTimerRef.current = setTimeout(() => setToastMsg(null), 7000);
             })
             .subscribe();
 

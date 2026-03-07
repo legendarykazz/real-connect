@@ -5,9 +5,11 @@ CREATE EXTENSION IF NOT EXISTS pg_net;
 CREATE OR REPLACE FUNCTION public.request_admin_notification()
 RETURNS TRIGGER AS $$
 BEGIN
+  -- This sends an HTTP POST request to your Supabase Edge Function
+  -- IMPORTANT: Ensure 'admin-notify' is deployed with --no-verify-jwt 
+  -- OR add 'Authorization': 'Bearer YOUR_SERVICE_ROLE_KEY' to headers below.
   PERFORM
     net.http_post(
-      -- Replace 'izwsxkpjnuiezhxbqfbl' with your actual project reference ID
       url := 'https://izwsxkpjnuiezhxbqfbl.supabase.co/functions/v1/admin-notify',
       headers := '{"Content-Type": "application/json"}'::jsonb,
       body := jsonb_build_object(
