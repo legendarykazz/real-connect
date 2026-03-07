@@ -111,6 +111,13 @@ const ListProperty = () => {
     const [error, setError] = useState(null);
     const [uploadProgress, setUploadProgress] = useState('');
 
+    // --- KYC Verification State ---
+    const [showKYCForm, setShowKYCForm] = useState(false);
+    const [kycDoc, setKycDoc] = useState(null);
+    const [kycType, setKycType] = useState('National ID');
+    const [kycLoading, setKycLoading] = useState(false);
+    const [kycSuccess, setKycSuccess] = useState(false);
+
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
@@ -118,22 +125,74 @@ const ListProperty = () => {
     useEffect(() => {
         const checkVerification = async () => {
             if (user) {
-                const { data, error } = await supabase
+                // Check if they are verified
+                const { data: profileData, error: profileErr } = await supabase
                     .from('user_profiles')
                     .select('is_verified')
                     .eq('user_id', user.id)
                     .single();
 
-                if (!error && data) {
-                    setIsVerified(data.is_verified);
+                if (!profileErr && profileData) {
+                    setIsVerified(profileData.is_verified);
                 } else {
                     setIsVerified(false);
+                }
+
+                // Check if they already have a pending verification request
+                const { data: verifyData } = await supabase
+                    .from('user_verifications')
+                    .select('status')
+                    .eq('user_id', user.id)
+                    .eq('status', 'pending')
+                    .single();
+
+                if (verifyData) {
+                    setKycSuccess(true); // Treat as success so they see the "under review" message
                 }
             }
         };
 
         checkVerification();
     }, [user]);
+
+    const handleKYCSubmit = async (e) => {
+        e.preventDefault();
+        if (!kycDoc || !user) return;
+
+        setKycLoading(true);
+        setError(null);
+
+        try {
+            // Upload ID Document
+            const ext = kycDoc.name.split('.').pop();
+            const path = `${user.id}/kyc_${Date.now()}.${ext}`;
+            const { error: uploadError } = await supabase.storage.from('kyc-documents').upload(path, kycDoc);
+
+            if (uploadError) throw uploadError;
+
+            const docUrl = supabase.storage.from('kyc-documents').getPublicUrl(path).data.publicUrl;
+
+            // Save Request to Database
+            const { error: dbError } = await supabase
+                .from('user_verifications')
+                .insert([{
+                    user_id: user.id,
+                    id_type: kycType,
+                    id_document_url: docUrl,
+                    status: 'pending'
+                }]);
+
+            if (dbError) throw dbError;
+
+            setKycSuccess(true);
+            setShowKYCForm(false);
+        } catch (err) {
+            console.error('KYC Error:', err);
+            setError(err.message || "Failed to submit verification request. Please try again.");
+        } finally {
+            setKycLoading(false);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -230,22 +289,71 @@ const ListProperty = () => {
     if (user && isVerified === false) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 font-sans text-brand-dark py-24">
-                <div className="bg-white p-10 rounded-3xl shadow-lg max-w-lg text-center border top-brand-green border-t-8 border-r-0 border-b-0 border-l-0 border-gray-100">
-                    <div className="bg-red-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                        <ShieldCheck className="w-12 h-12 text-red-500" />
-                    </div>
-                    <h1 className="text-3xl font-extrabold text-brand-dark mb-4">Verification Required</h1>
-                    <p className="text-gray-600 mb-8 text-lg">
-                        You must complete your KYC verification before you can list a property. Please check your profile status in the mobile app or contact an administrator.
-                    </p>
-                    <div className="space-y-4">
-                        <Link to="/browse" className="w-full bg-brand-green text-white font-bold py-4 px-8 rounded-xl shadow-md hover:bg-green-700 transition-colors inline-block">
-                            Browse Listings
-                        </Link>
-                        <Link to="/" className="w-full bg-white text-brand-dark border-2 border-gray-200 font-bold py-4 px-8 rounded-xl hover:bg-gray-50 transition-colors inline-block">
-                            Return to Home
-                        </Link>
-                    </div>
+                <div className="bg-white p-10 rounded-3xl shadow-lg max-w-lg w-full text-center border top-brand-green border-t-8 border-r-0 border-b-0 border-l-0 border-gray-100">
+
+                    {error && (
+                        <div className="mb-6 bg-red-50 text-red-600 p-3 rounded-lg text-sm text-left">{error}</div>
+                    )}
+
+                    {!showKYCForm && !kycSuccess ? (
+                        <>
+                            <div className="bg-red-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                                <ShieldCheck className="w-12 h-12 text-red-500" />
+                            </div>
+                            <h1 className="text-3xl font-extrabold text-brand-dark mb-4">Verification Required</h1>
+                            <p className="text-gray-600 mb-8 text-lg">
+                                You must complete your KYC verification before you can list a property. This ensures a safe marketplace for everyone.
+                            </p>
+                            <div className="space-y-4">
+                                <button onClick={() => setShowKYCForm(true)} className="w-full bg-brand-green text-white font-bold py-4 px-8 rounded-xl shadow-md hover:bg-green-700 transition-colors inline-block">
+                                    Start Verification Now
+                                </button>
+                                <Link to="/browse" className="w-full bg-white text-brand-dark border-2 border-gray-200 font-bold py-4 px-8 rounded-xl hover:bg-gray-50 transition-colors inline-block">
+                                    Return to Browse
+                                </Link>
+                            </div>
+                        </>
+                    ) : kycSuccess ? (
+                        <>
+                            <div className="bg-orange-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                                <ShieldCheck className="w-12 h-12 text-orange-500" />
+                            </div>
+                            <h1 className="text-3xl font-extrabold text-brand-dark mb-4">Under Review</h1>
+                            <p className="text-gray-600 mb-8 text-lg">
+                                Your KYC documents have been successfully submitted and are currently being reviewed by our admin team. We will notify you once approved.
+                            </p>
+                            <Link to="/browse" className="w-full bg-brand-green text-white font-bold py-4 px-8 rounded-xl shadow-md hover:bg-green-700 transition-colors inline-block">
+                                Browse Listings
+                            </Link>
+                        </>
+                    ) : (
+                        <form onSubmit={handleKYCSubmit} className="text-left">
+                            <h2 className="text-2xl font-bold mb-4">Submit KYC Documents</h2>
+                            <p className="text-gray-500 text-sm mb-6">Please upload a valid government ID to verify your identity.</p>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-bold text-gray-700 mb-2">ID Type</label>
+                                <select value={kycType} onChange={(e) => setKycType(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-green">
+                                    <option>National ID / NIN</option>
+                                    <option>Driver's License</option>
+                                    <option>International Passport</option>
+                                    <option>Voter's Card</option>
+                                </select>
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Upload ID Document (Image)</label>
+                                <input required type="file" accept="image/*" onChange={(e) => setKycDoc(e.target.files[0])} className="w-full px-4 py-3 rounded-xl border border-gray-200" />
+                            </div>
+
+                            <div className="flex space-x-4">
+                                <button type="button" onClick={() => setShowKYCForm(false)} className="w-1/3 bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200">Cancel</button>
+                                <button disabled={kycLoading} type="submit" className="w-2/3 bg-brand-green text-white font-bold py-3 rounded-xl shadow-md hover:bg-green-700 disabled:opacity-50">
+                                    {kycLoading ? "Uploading..." : "Submit Documents"}
+                                </button>
+                            </div>
+                        </form>
+                    )}
                 </div>
             </div>
         );
