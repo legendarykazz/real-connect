@@ -131,7 +131,6 @@ const Navbar = () => {
                         {user ? (
                             <div className="flex items-center space-x-6">
                                 <Link to="/list-property" className="text-brand-dark hover:text-brand-green font-medium transition-colors">List Property</Link>
-                                <Link to="/admin" className="text-brand-dark hover:text-brand-green font-medium transition-colors">Dashboard</Link>
 
                                 {/* Notification Bell */}
                                 <div className="relative" ref={notifRef}>
@@ -282,7 +281,6 @@ const Navbar = () => {
                         {user ? (
                             <>
                                 <Link to="/list-property" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 text-base font-medium text-brand-dark hover:text-brand-green hover:bg-gray-50 rounded-md">List Property</Link>
-                                <Link to="/admin" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 text-base font-medium text-brand-dark hover:text-brand-green hover:bg-gray-50 rounded-md">Dashboard</Link>
                                 <button onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:bg-red-50 rounded-md">Logout</button>
                             </>
                         ) : (
