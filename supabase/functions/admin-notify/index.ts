@@ -27,13 +27,16 @@ serve(async (req) => {
 
         // Parse the Webhook payload from Supabase
         const payload = await req.json()
-        const record = payload.record // The newly inserted row data
+        console.log('Incoming Webhook Payload:', JSON.stringify(payload, null, 2))
+
+        const record = payload.record || payload // The newly inserted row data
+        const tableName = payload.table || (record.property_type ? 'properties' : (record.id_type ? 'user_verifications' : 'unknown'))
 
         let emailSubject = '';
         let emailHtml = '';
 
         // Check which table triggered the webhook
-        if (payload.table === 'properties') {
+        if (tableName === 'properties') {
             emailSubject = `🏠 New Property Listing Needs Approval: ${record.location}`;
             emailHtml = `
                 <h2>New Property Listing Submitted</h2>
