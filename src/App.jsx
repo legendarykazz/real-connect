@@ -61,7 +61,11 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/browse" element={<BrowseLands />} />
               <Route path="/property/:id" element={<PropertyDetails />} />
-              <Route path="/list-property" element={<ListProperty />} />
+              <Route path="/list-property" element={
+                <ProtectedRoute>
+                  <ListProperty />
+                </ProtectedRoute>
+              } />
               <Route path="/login" element={<Login />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />

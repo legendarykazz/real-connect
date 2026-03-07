@@ -1,8 +1,11 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const CallToAction = () => {
+    const { user } = useAuth();
+
     return (
         <section className="py-24 bg-brand-green relative overflow-hidden">
             {/* Background Pattern */}
@@ -24,10 +27,17 @@ const CallToAction = () => {
                 <p className="text-xl text-green-50 mb-10 max-w-2xl mx-auto">
                     List your land with RealConnect and reach serious buyers. We verify your property before publishing it on our platform to ensure trust and speed up your sale.
                 </p>
-                <Link to="/list-property" className="bg-white text-brand-green px-10 py-5 rounded-full font-bold text-lg hover:bg-gray-50 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 inline-flex items-center">
-                    List Your Land / Contact Us
-                    <ArrowRight className="ml-2 w-5 h-5" />
-                </Link>
+                {user ? (
+                    <Link to="/list-property" className="bg-white text-brand-green px-10 py-5 rounded-full font-bold text-lg hover:bg-gray-50 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 inline-flex items-center">
+                        List Your Land / Contact Us
+                        <ArrowRight className="ml-2 w-5 h-5" />
+                    </Link>
+                ) : (
+                    <Link to="/login" className="bg-white text-brand-green px-10 py-5 rounded-full font-bold text-lg hover:bg-gray-50 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 inline-flex items-center">
+                        Login to List Property
+                        <ArrowRight className="ml-2 w-5 h-5" />
+                    </Link>
+                )}
             </div>
         </section>
     );

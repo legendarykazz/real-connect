@@ -127,10 +127,10 @@ const Navbar = () => {
 
                     <div className="hidden md:flex space-x-8 items-center">
                         <Link to="/browse" className="text-brand-dark hover:text-brand-green font-medium transition-colors">Browse Lands</Link>
-                        <Link to="/list-property" className="text-brand-dark hover:text-brand-green font-medium transition-colors">List Property</Link>
 
                         {user ? (
                             <div className="flex items-center space-x-6">
+                                <Link to="/list-property" className="text-brand-dark hover:text-brand-green font-medium transition-colors">List Property</Link>
                                 <Link to="/admin" className="text-brand-dark hover:text-brand-green font-medium transition-colors">Dashboard</Link>
 
                                 {/* Notification Bell */}
@@ -278,10 +278,10 @@ const Navbar = () => {
                 {isMobileMenuOpen && (
                     <div className="md:hidden pb-6 border-t border-gray-100 pt-4 space-y-4 px-2">
                         <Link to="/browse" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 text-base font-medium text-brand-dark hover:text-brand-green hover:bg-gray-50 rounded-md">Browse Lands</Link>
-                        <Link to="/list-property" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 text-base font-medium text-brand-dark hover:text-brand-green hover:bg-gray-50 rounded-md">List Property</Link>
 
                         {user ? (
                             <>
+                                <Link to="/list-property" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 text-base font-medium text-brand-dark hover:text-brand-green hover:bg-gray-50 rounded-md">List Property</Link>
                                 <Link to="/admin" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 text-base font-medium text-brand-dark hover:text-brand-green hover:bg-gray-50 rounded-md">Dashboard</Link>
                                 <button onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:bg-red-50 rounded-md">Logout</button>
                             </>

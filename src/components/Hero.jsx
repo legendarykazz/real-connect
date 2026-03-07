@@ -1,8 +1,11 @@
 import React from 'react';
 import { ShieldCheck, MapPin, FileCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const Hero = () => {
+    const { user } = useAuth();
+
     return (
         <div className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-brand-light">
             {/* Background decorations */}
@@ -33,9 +36,15 @@ const Hero = () => {
                         <Link to="/browse" className="w-full sm:w-auto bg-brand-green text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-green-700 transition-all shadow-lg hover:shadow-brand-green/30 transform hover:-translate-y-1 inline-block text-center">
                             Browse Available Lands
                         </Link>
-                        <Link to="/list-property" className="w-full sm:w-auto text-center inline-block bg-white text-brand-dark-blue border-2 border-brand-dark-blue/20 px-8 py-4 rounded-full font-bold text-lg hover:border-brand-dark-blue hover:bg-blue-50 transition-all shadow-sm">
-                            List Your Property
-                        </Link>
+                        {user ? (
+                            <Link to="/list-property" className="w-full sm:w-auto text-center inline-block bg-white text-brand-dark-blue border-2 border-brand-dark-blue/20 px-8 py-4 rounded-full font-bold text-lg hover:border-brand-dark-blue hover:bg-blue-50 transition-all shadow-sm">
+                                List Your Property
+                            </Link>
+                        ) : (
+                            <Link to="/login" className="w-full sm:w-auto text-center inline-block bg-white text-brand-dark-blue border-2 border-brand-dark-blue/20 px-8 py-4 rounded-full font-bold text-lg hover:border-brand-dark-blue hover:bg-blue-50 transition-all shadow-sm">
+                                Login to List Property
+                            </Link>
+                        )}
                     </div>
                 </div>
 

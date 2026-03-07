@@ -1,8 +1,10 @@
 import React from 'react';
 import { Mail, Phone, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const Footer = () => {
+    const { user } = useAuth();
     return (
         <footer id="contact" className="bg-brand-dark text-white pt-20 pb-10 border-t border-white/10">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -44,7 +46,11 @@ const Footer = () => {
                         <h3 className="text-lg font-bold mb-6">Quick Links</h3>
                         <ul className="space-y-4">
                             <li><Link to="/browse" className="text-gray-400 hover:text-brand-light-blue transition-colors">Browse Lands</Link></li>
-                            <li><Link to="/list-property" className="text-gray-400 hover:text-brand-light-blue transition-colors text-left block w-full">List Property</Link></li>
+                            {user ? (
+                                <li><Link to="/list-property" className="text-gray-400 hover:text-brand-light-blue transition-colors text-left block w-full">List Property</Link></li>
+                            ) : (
+                                <li><Link to="/login" className="text-gray-400 hover:text-brand-light-blue transition-colors text-left block w-full">Login to List Property</Link></li>
+                            )}
                             <li><a href="#contact" className="text-gray-400 hover:text-brand-light-blue transition-colors">Contact Us</a></li>
                             <li><Link to="/privacy" className="text-gray-400 hover:text-brand-light-blue transition-colors text-left block w-full">Privacy Policy</Link></li>
                         </ul>

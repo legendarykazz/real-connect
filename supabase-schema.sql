@@ -32,14 +32,16 @@ CREATE POLICY "admin_read_all"
     auth.email() IN ('amjustsam28@gmail.com', 'zephaniahmusa99@gmail.com')
   );
 
--- Policy 3: ANY authenticated user can INSERT (submit a listing), unless blocked
+-- Policy 3: ANY authenticated user can INSERT (submit a listing), unless blocked, MUST BE VERIFIED
 CREATE POLICY "authenticated_insert"
   ON properties FOR INSERT
   WITH CHECK (
     auth.role() = 'authenticated' AND
-    NOT EXISTS (
+    EXISTS (
       SELECT 1 FROM user_profiles 
-      WHERE user_id = auth.uid() AND is_blocked = true
+      WHERE user_id = auth.uid() 
+      AND is_blocked = false 
+      AND is_verified = true
     )
   );
 

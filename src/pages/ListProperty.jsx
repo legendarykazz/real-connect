@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Camera, MapPin, CheckCircle2, ChevronRight, UploadCloud, Info, ShieldCheck, X, Image } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -101,6 +101,7 @@ const ListProperty = () => {
     const [docs, setDocs] = useState([]);     // [{file, name, size}] — max 2
     const [videos, setVideos] = useState([]); // [{file, preview, name}] — max 2
     const [coordinates, setCoordinates] = useState({ lat: null, lng: null });
+    const [isVerified, setIsVerified] = useState(null); // null = loading state
     const [formData, setFormData] = useState({
         firstName: '', lastName: '', email: '', phone: '',
         propertyType: 'Residential', location: '', size: '', price: '',
@@ -113,6 +114,26 @@ const ListProperty = () => {
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
+
+    useEffect(() => {
+        const checkVerification = async () => {
+            if (user) {
+                const { data, error } = await supabase
+                    .from('user_profiles')
+                    .select('is_verified')
+                    .eq('user_id', user.id)
+                    .single();
+
+                if (!error && data) {
+                    setIsVerified(data.is_verified);
+                } else {
+                    setIsVerified(false);
+                }
+            }
+        };
+
+        checkVerification();
+    }, [user]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -192,6 +213,30 @@ const ListProperty = () => {
                     <h1 className="text-3xl font-extrabold text-brand-dark mb-4">Request Submitted!</h1>
                     <p className="text-gray-600 mb-8 text-lg">
                         Thank you for choosing to list your property with RealConnect. Our verification team will review your details and an admin will contact you shortly before we approve and publish your listing.
+                    </p>
+                    <div className="space-y-4">
+                        <Link to="/browse" className="w-full bg-brand-green text-white font-bold py-4 px-8 rounded-xl shadow-md hover:bg-green-700 transition-colors inline-block">
+                            Browse Listings
+                        </Link>
+                        <Link to="/" className="w-full bg-white text-brand-dark border-2 border-gray-200 font-bold py-4 px-8 rounded-xl hover:bg-gray-50 transition-colors inline-block">
+                            Return to Home
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (user && isVerified === false) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 font-sans text-brand-dark py-24">
+                <div className="bg-white p-10 rounded-3xl shadow-lg max-w-lg text-center border top-brand-green border-t-8 border-r-0 border-b-0 border-l-0 border-gray-100">
+                    <div className="bg-red-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                        <ShieldCheck className="w-12 h-12 text-red-500" />
+                    </div>
+                    <h1 className="text-3xl font-extrabold text-brand-dark mb-4">Verification Required</h1>
+                    <p className="text-gray-600 mb-8 text-lg">
+                        You must complete your KYC verification before you can list a property. Please check your profile status in the mobile app or contact an administrator.
                     </p>
                     <div className="space-y-4">
                         <Link to="/browse" className="w-full bg-brand-green text-white font-bold py-4 px-8 rounded-xl shadow-md hover:bg-green-700 transition-colors inline-block">
