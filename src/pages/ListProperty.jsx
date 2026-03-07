@@ -266,8 +266,8 @@ const ListProperty = () => {
                     phone: user.user_metadata?.phone || '',
                     id_type: kycData.idType,
                     id_number: kycData.idNumber,
-                    id_document_url: idDocUrl,
-                    address_document_url: addressDocUrl,
+                    id_document_url: idUrl,
+                    address_document_url: addressUrl,
                     selfie_url: selfieUrl,
                     status: 'pending'
                 }], { onConflict: 'user_id' });

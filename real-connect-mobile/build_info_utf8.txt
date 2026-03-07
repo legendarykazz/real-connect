@@ -1,0 +1,19 @@
+﻿
+Builds for @racheldebby63/real-connect-mobile:
+
+ID                       372d24e4-fee8-44d4-b6d8-6e786a392ebe
+Platform                 Android
+Status                   finished
+Profile                  preview
+Distribution             internal
+SDK Version              54.0.0
+Version                  1.0.0
+Version code             1
+Commit                   519bd0ee02cf7d26ddeeac1a4c9f0bb1d36c4540
+Logs                     https://expo.dev/accounts/racheldebby63/projects/real-connect-mobile/builds/372d24e4-fee8-44d4-b6d8-6e786a392ebe
+Application Archive URL  https://expo.dev/artifacts/eas/7Pbj6qxE3bMSHp1MMrMKd3.apk
+Build Artifacts URL      null
+Fingerprint              6f36999c436cea4023dbe6417aaa19025ad44a11
+Started at               3/7/2026, 7:18:12 AM
+Finished at              3/7/2026, 7:32:51 AM
+Started by               racheldebby63

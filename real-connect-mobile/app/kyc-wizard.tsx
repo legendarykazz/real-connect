@@ -15,6 +15,8 @@ export default function KYCWizard() {
     const [loading, setLoading] = useState(false);
 
     // Form State
+    const [fullName, setFullName] = useState('');
+    const [address, setAddress] = useState('');
     const [idType, setIdType] = useState('NIN');
     const [idNumber, setIdNumber] = useState('');
     const [idImage, setIdImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
@@ -53,8 +55,8 @@ export default function KYCWizard() {
     };
 
     const handleSubmit = async () => {
-        if (!idImage || !addressImage || !selfieImage || !idNumber) {
-            Alert.alert('Incomplete', 'Please provide all required photos and ID number.');
+        if (!idImage || !addressImage || !selfieImage || !idNumber || !fullName || !address) {
+            Alert.alert('Incomplete', 'Please provide all required details and photos.');
             return;
         }
 
@@ -74,6 +76,10 @@ export default function KYCWizard() {
 
             const payload = {
                 user_id: user?.id,
+                full_name: fullName,
+                address: address,
+                email: user?.email,
+                phone: user?.user_metadata?.phone || '',
                 status: 'pending',
                 id_type: idType,
                 id_number: idNumber,
@@ -144,8 +150,16 @@ export default function KYCWizard() {
                                 <FileText color="#3b82f6" size={32} />
                             </View>
                             <Text className="text-2xl font-bold text-brand-dark mb-2">Government ID</Text>
-                            <Text className="text-gray-500 text-center">Please provide a valid Government ID (NIN, Driver's License, or International Passport).</Text>
+                            <Text className="text-gray-500 text-center">Please provide your full name and a valid Government ID.</Text>
                         </View>
+
+                        <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">Full Legal Name *</Text>
+                        <TextInput
+                            className="bg-white rounded-xl px-4 py-4 mb-4 border border-gray-200 text-brand-dark font-medium shadow-sm"
+                            placeholder="e.g. John Doe"
+                            value={fullName}
+                            onChangeText={setFullName}
+                        />
 
                         <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">ID Type</Text>
                         <View className="bg-white rounded-xl border border-gray-200 mb-4 overflow-hidden flex-row shadow-sm">
@@ -178,8 +192,8 @@ export default function KYCWizard() {
 
                         <TouchableOpacity
                             onPress={() => {
-                                if (idImage && idNumber) setStep(2);
-                                else Alert.alert('Required', 'Please enter ID number and upload ID photo.');
+                                if (idImage && idNumber && fullName) setStep(2);
+                                else Alert.alert('Required', 'Please enter your name, ID number and upload ID photo.');
                             }}
                             className="bg-brand-green py-4 rounded-xl items-center shadow-md mb-8"
                         >
@@ -195,8 +209,17 @@ export default function KYCWizard() {
                                 <ShieldCheck color="#a855f7" size={32} />
                             </View>
                             <Text className="text-2xl font-bold text-brand-dark mb-2">Proof of Address</Text>
-                            <Text className="text-gray-500 text-center">Upload a recent utility bill or bank statement (not older than 3 months) showing your name and address.</Text>
+                            <Text className="text-gray-500 text-center">Provide your residential address and upload a recent utility bill or bank statement (not older than 3 months).</Text>
                         </View>
+
+                        <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">Residential Address *</Text>
+                        <TextInput
+                            className="bg-white rounded-xl px-4 py-4 mb-6 border border-gray-200 text-brand-dark font-medium shadow-sm"
+                            placeholder="e.g. 123 Main St, Lagos"
+                            value={address}
+                            onChangeText={setAddress}
+                            multiline
+                        />
 
                         <TouchableOpacity onPress={() => pickImage(setAddressImage, false)} className="border-2 border-dashed border-gray-300 rounded-2xl h-48 bg-gray-50 items-center justify-center mb-8 overflow-hidden">
                             {addressImage ? (
@@ -216,8 +239,8 @@ export default function KYCWizard() {
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={() => {
-                                    if (addressImage) setStep(3);
-                                    else Alert.alert('Required', 'Please upload a proof of address document.');
+                                    if (addressImage && address) setStep(3);
+                                    else Alert.alert('Required', 'Please enter your address and upload a proof document.');
                                 }}
                                 className="flex-1 bg-brand-green py-4 rounded-xl items-center shadow-md ml-2"
                             >
