@@ -258,7 +258,7 @@ const ListProperty = () => {
             // Save Request to Database
             const { error: dbError } = await supabase
                 .from('user_verifications')
-                .insert([{
+                .upsert({
                     user_id: user.id,
                     full_name: kycData.fullName,
                     address: kycData.address,
@@ -269,8 +269,9 @@ const ListProperty = () => {
                     id_document_url: idUrl,
                     address_document_url: addressUrl,
                     selfie_url: selfieUrl,
-                    status: 'pending'
-                }], { onConflict: 'user_id' });
+                    status: 'pending',
+                    rejection_reason: null
+                }, { onConflict: 'user_id' });
 
             if (dbError) throw dbError;
 
