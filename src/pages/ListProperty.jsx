@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Camera, MapPin, CheckCircle2, ChevronRight, UploadCloud, Info, ShieldCheck, X, Image } from 'lucide-react';
+import { Camera, MapPin, CheckCircle2, ChevronRight, UploadCloud, Info, ShieldCheck, X, Image, Camera as CameraIcon, RefreshCw, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -121,9 +121,14 @@ const ListProperty = () => {
     });
     const [kycDoc, setKycDoc] = useState(null); // ID Image
     const [kycAddressDoc, setKycAddressDoc] = useState(null); // Proof of Address (Image/PDF)
-    const [kycSelfie, setKycSelfie] = useState(null); // Selfie (Image)
+    const [kycSelfie, setKycSelfie] = useState(null); // Captured Selfie (Blob)
+    const [kycSelfiePreview, setKycSelfiePreview] = useState(null); // Captured Selfie Preview (Base64)
     const [kycLoading, setKycLoading] = useState(false);
     const [kycSuccess, setKycSuccess] = useState(false);
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
+    const [cameraLoading, setCameraLoading] = useState(false);
+    const videoRef = React.useRef(null);
+    const canvasRef = React.useRef(null);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -131,6 +136,64 @@ const ListProperty = () => {
 
     const handleKycChange = (e) => {
         setKycData({ ...kycData, [e.target.name]: e.target.value });
+    };
+
+    // --- Camera Logic for Liveness ---
+    const startCamera = async () => {
+        setIsCameraOpen(true);
+        setCameraLoading(true);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 640 } }
+            });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
+        } catch (err) {
+            console.error("Camera access error:", err);
+            setError("Could not access camera. Please ensure you have given permission.");
+            setIsCameraOpen(false);
+        } finally {
+            setCameraLoading(false);
+        }
+    };
+
+    const stopCamera = () => {
+        if (videoRef.current && videoRef.current.srcObject) {
+            const tracks = videoRef.current.srcObject.getTracks();
+            tracks.forEach(track => track.stop());
+            videoRef.current.srcObject = null;
+        }
+        setIsCameraOpen(false);
+    };
+
+    const capturePhoto = () => {
+        if (videoRef.current && canvasRef.current) {
+            const video = videoRef.current;
+            const canvas = canvasRef.current;
+            const context = canvas.getContext('2d');
+
+            // Set canvas size to match video aspect ratio (square crop)
+            const size = Math.min(video.videoWidth, video.videoHeight);
+            canvas.width = size;
+            canvas.height = size;
+
+            // Draw current video frame to canvas
+            context.drawImage(
+                video,
+                (video.videoWidth - size) / 2,
+                (video.videoHeight - size) / 2,
+                size, size,
+                0, 0, size, size
+            );
+
+            // Convert canvas to blob
+            canvas.toBlob((blob) => {
+                setKycSelfie(blob);
+                setKycSelfiePreview(canvas.toDataURL('image/jpeg'));
+                stopCamera();
+            }, 'image/jpeg', 0.8);
+        }
     };
 
     useEffect(() => {
@@ -177,7 +240,7 @@ const ListProperty = () => {
         setError(null);
 
         const uploadKycFile = async (file, prefix) => {
-            const ext = file.name.split('.').pop();
+            const ext = file.type?.split('/')[1]?.split('+')[0] || (file.name ? file.name.split('.').pop() : 'jpg');
             const path = `${user.id}/${prefix}_${Date.now()}.${ext}`;
             const { error: uploadError } = await supabase.storage.from('kyc_documents').upload(path, file);
             if (uploadError) throw new Error(`${prefix} upload failed: ` + uploadError.message);
@@ -391,11 +454,84 @@ const ListProperty = () => {
                                     <input required type="file" accept="image/*,.pdf" onChange={(e) => setKycAddressDoc(e.target.files[0])} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">3. Clear Selfie (Image) *</label>
-                                    <p className="text-xs text-gray-500 mb-1">A photo of your face to match your ID</p>
-                                    <input required type="file" accept="image/*" onChange={(e) => setKycSelfie(e.target.files[0])} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white" />
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">3. Liveness Check (Selfie) *</label>
+                                    <p className="text-xs text-gray-500 mb-2">Take a clear photo of your face using your webcam/camera.</p>
+
+                                    {!kycSelfiePreview ? (
+                                        <button
+                                            type="button"
+                                            onClick={startCamera}
+                                            className="w-full py-4 border-2 border-dashed border-brand-green rounded-xl bg-green-50 text-brand-green font-bold flex items-center justify-center hover:bg-green-100 transition-colors"
+                                        >
+                                            <CameraIcon className="w-5 h-5 mr-2" />
+                                            Open Camera for Liveness Check
+                                        </button>
+                                    ) : (
+                                        <div className="relative w-32 h-32 mx-auto sm:mx-0 rounded-2xl overflow-hidden shadow-md border-2 border-brand-green">
+                                            <img src={kycSelfiePreview} alt="Selfie" className="w-full h-full object-cover" />
+                                            <button
+                                                type="button"
+                                                onClick={startCamera}
+                                                className="absolute bottom-1 right-1 bg-brand-green text-white p-1.5 rounded-lg shadow-lg hover:bg-green-700 transition-colors"
+                                                title="Retake Photo"
+                                            >
+                                                <RefreshCw className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
+
+                            {/* Camera Modal Overlay */}
+                            {isCameraOpen && (
+                                <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4">
+                                    <div className="relative w-full max-w-md bg-brand-dark rounded-3xl overflow-hidden shadow-2xl border border-gray-800">
+                                        <div className="absolute top-4 right-4 z-10">
+                                            <button onClick={stopCamera} className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition-colors">
+                                                <X className="w-6 h-6" />
+                                            </button>
+                                        </div>
+
+                                        <div className="aspect-square bg-black flex items-center justify-center relative">
+                                            {cameraLoading && (
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                                                    <RefreshCw className="w-10 h-10 animate-spin mb-4" />
+                                                    <p>Initializing camera...</p>
+                                                </div>
+                                            )}
+                                            <video
+                                                ref={videoRef}
+                                                autoPlay
+                                                playsInline
+                                                muted
+                                                className="w-full h-full object-cover mirror"
+                                                onLoadedMetadata={() => setCameraLoading(false)}
+                                            />
+                                            {/* Mask Overlay */}
+                                            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                                                <div className="w-72 h-72 border-2 border-dashed border-white/50 rounded-full"></div>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-8 text-center bg-brand-dark">
+                                            <h3 className="text-white text-xl font-bold mb-2">Liveness Selfie</h3>
+                                            <p className="text-gray-400 text-sm mb-6">Position your face inside the circle and look directly at the camera.</p>
+
+                                            <button
+                                                type="button"
+                                                onClick={capturePhoto}
+                                                className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+                                            >
+                                                <div className="w-16 h-16 border-4 border-brand-dark rounded-full flex items-center justify-center">
+                                                    <div className="w-12 h-12 bg-red-500 rounded-full"></div>
+                                                </div>
+                                            </button>
+                                        </div>
+
+                                        <canvas ref={canvasRef} className="hidden" />
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="flex space-x-4">
                                 <button type="button" onClick={() => setShowKYCForm(false)} className="w-1/3 bg-gray-200 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-300 transition-colors">Cancel</button>
