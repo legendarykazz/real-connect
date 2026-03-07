@@ -113,13 +113,24 @@ const ListProperty = () => {
 
     // --- KYC Verification State ---
     const [showKYCForm, setShowKYCForm] = useState(false);
-    const [kycDoc, setKycDoc] = useState(null);
-    const [kycType, setKycType] = useState('National ID');
+    const [kycData, setKycData] = useState({
+        fullName: '',
+        address: '',
+        idType: 'National ID / NIN',
+        idNumber: ''
+    });
+    const [kycDoc, setKycDoc] = useState(null); // ID Image
+    const [kycAddressDoc, setKycAddressDoc] = useState(null); // Proof of Address (Image/PDF)
+    const [kycSelfie, setKycSelfie] = useState(null); // Selfie (Image)
     const [kycLoading, setKycLoading] = useState(false);
     const [kycSuccess, setKycSuccess] = useState(false);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleKycChange = (e) => {
+        setKycData({ ...kycData, [e.target.name]: e.target.value });
     };
 
     useEffect(() => {
@@ -157,28 +168,42 @@ const ListProperty = () => {
 
     const handleKYCSubmit = async (e) => {
         e.preventDefault();
-        if (!kycDoc || !user) return;
+        if (!kycDoc || !kycAddressDoc || !kycSelfie || !user) {
+            setError("Please fill all fields and upload all 3 required documents.");
+            return;
+        }
 
         setKycLoading(true);
         setError(null);
 
+        const uploadKycFile = async (file, prefix) => {
+            const ext = file.name.split('.').pop();
+            const path = `${user.id}/${prefix}_${Date.now()}.${ext}`;
+            const { error: uploadError } = await supabase.storage.from('kyc_documents').upload(path, file);
+            if (uploadError) throw new Error(`${prefix} upload failed: ` + uploadError.message);
+            return supabase.storage.from('kyc_documents').getPublicUrl(path).data.publicUrl;
+        };
+
         try {
-            // Upload ID Document
-            const ext = kycDoc.name.split('.').pop();
-            const path = `${user.id}/kyc_${Date.now()}.${ext}`;
-            const { error: uploadError } = await supabase.storage.from('kyc-documents').upload(path, kycDoc);
-
-            if (uploadError) throw uploadError;
-
-            const docUrl = supabase.storage.from('kyc-documents').getPublicUrl(path).data.publicUrl;
+            // Upload all 3 documents
+            const [idUrl, addressUrl, selfieUrl] = await Promise.all([
+                uploadKycFile(kycDoc, 'id'),
+                uploadKycFile(kycAddressDoc, 'address'),
+                uploadKycFile(kycSelfie, 'selfie')
+            ]);
 
             // Save Request to Database
             const { error: dbError } = await supabase
                 .from('user_verifications')
                 .insert([{
                     user_id: user.id,
-                    id_type: kycType,
-                    id_document_url: docUrl,
+                    full_name: kycData.fullName,
+                    address: kycData.address,
+                    id_type: kycData.idType,
+                    id_number: kycData.idNumber,
+                    id_document_url: idUrl,
+                    address_document_url: addressUrl,
+                    selfie_url: selfieUrl,
                     status: 'pending'
                 }]);
 
@@ -327,29 +352,55 @@ const ListProperty = () => {
                             </Link>
                         </>
                     ) : (
-                        <form onSubmit={handleKYCSubmit} className="text-left">
-                            <h2 className="text-2xl font-bold mb-4">Submit KYC Documents</h2>
-                            <p className="text-gray-500 text-sm mb-6">Please upload a valid government ID to verify your identity.</p>
+                        <form onSubmit={handleKYCSubmit} className="text-left w-full max-w-2xl mx-auto">
+                            <h2 className="text-2xl font-bold mb-2">Submit KYC Documents</h2>
+                            <p className="text-gray-500 text-sm mb-6">Please provide your details and upload the required documents to verify your identity.</p>
 
-                            <div className="mb-4">
-                                <label className="block text-sm font-bold text-gray-700 mb-2">ID Type</label>
-                                <select value={kycType} onChange={(e) => setKycType(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-green">
-                                    <option>National ID / NIN</option>
-                                    <option>Driver's License</option>
-                                    <option>International Passport</option>
-                                    <option>Voter's Card</option>
-                                </select>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Full Legal Name *</label>
+                                    <input required type="text" name="fullName" value={kycData.fullName} onChange={handleKycChange} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-green" placeholder="John Doe" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Residential Address *</label>
+                                    <input required type="text" name="address" value={kycData.address} onChange={handleKycChange} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-green" placeholder="123 Main St..." />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">ID Type *</label>
+                                    <select name="idType" value={kycData.idType} onChange={handleKycChange} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-green bg-white">
+                                        <option>National ID / NIN</option>
+                                        <option>Driver's License</option>
+                                        <option>International Passport</option>
+                                        <option>Voter's Card</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">ID Number *</label>
+                                    <input required type="text" name="idNumber" value={kycData.idNumber} onChange={handleKycChange} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-green" placeholder="e.g. 1234567890" />
+                                </div>
                             </div>
 
-                            <div className="mb-6">
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Upload ID Document (Image)</label>
-                                <input required type="file" accept="image/*" onChange={(e) => setKycDoc(e.target.files[0])} className="w-full px-4 py-3 rounded-xl border border-gray-200" />
+                            <div className="space-y-4 mb-8 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">1. Upload ID Document (Image) *</label>
+                                    <input required type="file" accept="image/*" onChange={(e) => setKycDoc(e.target.files[0])} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">2. Proof of Address (Image or PDF) *</label>
+                                    <p className="text-xs text-gray-500 mb-1">Utility bill, bank statement, etc. (max 3 months old)</p>
+                                    <input required type="file" accept="image/*,.pdf" onChange={(e) => setKycAddressDoc(e.target.files[0])} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">3. Clear Selfie (Image) *</label>
+                                    <p className="text-xs text-gray-500 mb-1">A photo of your face to match your ID</p>
+                                    <input required type="file" accept="image/*" onChange={(e) => setKycSelfie(e.target.files[0])} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white" />
+                                </div>
                             </div>
 
                             <div className="flex space-x-4">
-                                <button type="button" onClick={() => setShowKYCForm(false)} className="w-1/3 bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200">Cancel</button>
-                                <button disabled={kycLoading} type="submit" className="w-2/3 bg-brand-green text-white font-bold py-3 rounded-xl shadow-md hover:bg-green-700 disabled:opacity-50">
-                                    {kycLoading ? "Uploading..." : "Submit Documents"}
+                                <button type="button" onClick={() => setShowKYCForm(false)} className="w-1/3 bg-gray-200 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-300 transition-colors">Cancel</button>
+                                <button disabled={kycLoading} type="submit" className="w-2/3 bg-brand-green text-white font-bold py-3 rounded-xl shadow-md hover:bg-green-700 disabled:opacity-50 transition-colors">
+                                    {kycLoading ? "Uploading Documents..." : "Submit All Documents"}
                                 </button>
                             </div>
                         </form>
