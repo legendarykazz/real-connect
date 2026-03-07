@@ -5,7 +5,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { X, ChevronDown } from 'lucide-react-native';
 import Footer from '../../components/Footer';
 import { decode } from 'base64-arraybuffer';
@@ -30,6 +30,38 @@ export default function SellScreen() {
     const [lngText, setLngText] = useState('');
     const [loading, setLoading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState('');
+
+    // KYC Verification State
+    const [verifStatus, setVerifStatus] = useState<string | null>(null);
+    const [verifReason, setVerifReason] = useState<string>('');
+    const [verifLoading, setVerifLoading] = useState(true);
+
+    useFocusEffect(
+        React.useCallback(() => {
+            if (!user) return;
+            const checkVerification = async () => {
+                setVerifLoading(true);
+                const { data, error } = await supabase
+                    .from('user_verifications')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') {
+                    console.error('Error fetching verification:', error);
+                }
+
+                if (data) {
+                    setVerifStatus(data.status);
+                    setVerifReason(data.rejection_reason || '');
+                } else {
+                    setVerifStatus('none');
+                }
+                setVerifLoading(false);
+            };
+            checkVerification();
+        }, [user])
+    );
 
     const handleMapUpdate = (coords: { latitude: number; longitude: number } | null) => {
         setCoordinates(coords);
@@ -183,6 +215,67 @@ export default function SellScreen() {
             setUploadStatus('');
         }
     };
+
+    if (verifLoading) {
+        return (
+            <View className="flex-1 bg-brand-light items-center justify-center p-6">
+                <ActivityIndicator size="large" color="#10b981" />
+                <Text className="text-gray-500 mt-4 text-center">Checking verification status...</Text>
+            </View>
+        );
+    }
+
+    if (verifStatus !== 'approved') {
+        return (
+            <View className="flex-1 bg-brand-light items-center justify-center p-6">
+                <View className="bg-white px-6 py-8 rounded-3xl items-center shadow-lg border border-gray-100 max-w-sm w-full">
+                    <View className="bg-green-50 p-5 rounded-full mb-6">
+                        <Text className="text-5xl">🛡️</Text>
+                    </View>
+
+                    {verifStatus === 'pending' ? (
+                        <>
+                            <Text className="text-xl font-bold text-brand-dark mb-3 text-center">Verification Pending</Text>
+                            <Text className="text-gray-500 text-center mb-8 leading-relaxed">
+                                Our team is currently reviewing your identity documents. This usually takes less than 24 hours. We will notify you once approved!
+                            </Text>
+                            <TouchableOpacity onPress={() => router.replace('/(tabs)')} className="bg-brand-dark py-4 px-8 rounded-xl w-full items-center">
+                                <Text className="text-white font-bold text-lg">Back to Home</Text>
+                            </TouchableOpacity>
+                        </>
+                    ) : verifStatus === 'rejected' ? (
+                        <>
+                            <Text className="text-xl font-bold text-red-600 mb-3 text-center">Verification Rejected</Text>
+                            <Text className="text-gray-500 text-center mb-4 leading-relaxed">
+                                Unfortunately, we could not verify your identity.
+                            </Text>
+                            {verifReason ? (
+                                <View className="bg-red-50 p-3 rounded-lg border border-red-100 mb-6 w-full">
+                                    <Text className="text-red-800 text-sm text-center font-medium">Reason: {verifReason}</Text>
+                                </View>
+                            ) : null}
+                            <TouchableOpacity onPress={() => router.push('/kyc-wizard')} className="bg-brand-green py-4 px-8 rounded-xl w-full items-center mb-3 shadow-md">
+                                <Text className="text-white font-bold text-lg">Try Again</Text>
+                            </TouchableOpacity>
+                        </>
+                    ) : (
+                        <>
+                            <Text className="text-xl font-bold text-brand-dark mb-3 text-center">Keep RealConnect Safe</Text>
+                            <Text className="text-gray-500 text-center mb-8 leading-relaxed">
+                                To protect our buyers from fraud, we require all sellers to verify their identity with a Government ID and a quick selfie before listing properties. It only takes 2 minutes.
+                            </Text>
+                            <TouchableOpacity onPress={() => router.push('/kyc-wizard')} className="bg-brand-green py-4 px-8 rounded-xl shadow-md items-center w-full mb-3">
+                                <Text className="text-white font-bold text-lg">Start Verification</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => router.replace('/(tabs)')} className="py-3 px-8 rounded-xl w-full items-center">
+                                <Text className="text-gray-400 font-bold">Cancel</Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
+                </View>
+            </View>
+        );
+    }
 
     return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-brand-light">

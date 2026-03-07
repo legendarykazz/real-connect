@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import MapCoordinatePicker from '../components/MapCoordinatePicker';
+import AdminVerifications from '../components/AdminVerifications';
 
 // ---- ADMIN EMAILS (must match App.jsx) ----
 const ADMIN_EMAILS = [
@@ -35,10 +36,10 @@ const AdminDashboard = () => {
     const [selectedListing, setSelectedListing] = useState(null);
     const [modalImageIdx, setModalImageIdx] = useState(0);
 
-    // Notification state
     const [toastMsg, setToastMsg] = useState(null);
     const [bellAlerts, setBellAlerts] = useState(0);
     const toastTimerRef = useRef(null);
+    const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0);
 
     // Users state
     const [users, setUsers] = useState([]);
@@ -190,6 +191,16 @@ const AdminDashboard = () => {
     // ---- REALTIME SUBSCRIPTION ----
     useEffect(() => {
         fetchListings();
+
+        // Fetch Verifications count
+        const fetchPendingVerificationsCount = async () => {
+            const { count } = await supabase
+                .from('user_verifications')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'pending');
+            setPendingVerificationsCount(count || 0);
+        };
+        fetchPendingVerificationsCount();
 
         const channel = supabase
             .channel('admin-pending-alerts')
@@ -354,6 +365,7 @@ const AdminDashboard = () => {
 
                 <nav className="flex-1 px-4 py-8 space-y-1 overflow-y-auto">
                     {tabBtn('listings', <FileText className="w-5 h-5 mr-3" />, 'All Listings', pendingCount)}
+                    {tabBtn('verifications', <ShieldCheck className="w-5 h-5 mr-3" />, 'Verifications', pendingVerificationsCount)}
                     {tabBtn('users', <Users className="w-5 h-5 mr-3" />, 'Users & Sellers', 0)}
                     {tabBtn('settings', <Settings className="w-5 h-5 mr-3" />, 'Platform Settings', 0)}
                 </nav>
@@ -715,8 +727,12 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
                         </div>
-                    )
-                    }
+                    )}
+
+                    {/* ===== VERIFICATIONS TAB ===== */}
+                    {activeTab === 'verifications' && (
+                        <AdminVerifications />
+                    )}
 
                     {/* ===== USERS TAB ===== */}
                     {
@@ -949,219 +965,223 @@ const AdminDashboard = () => {
                         )
                     }
                 </div>
-            </main>
+            </main >
 
             {/* ===== TOAST NOTIFICATION ===== */}
-            {toastMsg && (
-                <div className="fixed top-5 right-5 z-[200] max-w-sm">
-                    <div className="bg-brand-dark text-white px-5 py-4 rounded-2xl shadow-2xl flex items-start gap-3 animate-slide-in">
-                        <Bell className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                            <p className="text-sm font-semibold">{toastMsg}</p>
-                            <button
-                                onClick={() => { setToastMsg(null); setBellAlerts(0); setActiveTab('listings'); }}
-                                className="text-xs text-green-400 font-bold mt-1 hover:underline"
-                            >Go to Listings →</button>
-                        </div>
-                        <button onClick={() => setToastMsg(null)} className="text-gray-400 hover:text-white">
-                            <X className="w-4 h-4" />
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* ===== DETAIL MODAL / DRAWER ===== */}
-            {selectedListing && (
-                <>
-                    {/* Backdrop */}
-                    <div
-                        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
-                        onClick={() => setSelectedListing(null)}
-                    />
-                    {/* Panel */}
-                    <aside className="fixed top-0 right-0 h-full w-full max-w-lg bg-white z-[110] shadow-2xl flex flex-col overflow-hidden">
-                        {/* Header */}
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-                            <div>
-                                <h2 className="text-lg font-bold text-brand-dark">Listing Details</h2>
-                                <p className="text-xs text-gray-400 mt-0.5">ID: {selectedListing.id?.slice(0, 18)}…</p>
+            {
+                toastMsg && (
+                    <div className="fixed top-5 right-5 z-[200] max-w-sm">
+                        <div className="bg-brand-dark text-white px-5 py-4 rounded-2xl shadow-2xl flex items-start gap-3 animate-slide-in">
+                            <Bell className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                                <p className="text-sm font-semibold">{toastMsg}</p>
+                                <button
+                                    onClick={() => { setToastMsg(null); setBellAlerts(0); setActiveTab('listings'); }}
+                                    className="text-xs text-green-400 font-bold mt-1 hover:underline"
+                                >Go to Listings →</button>
                             </div>
-                            <button onClick={() => setSelectedListing(null)} className="p-2 rounded-full hover:bg-gray-100 text-gray-400">
-                                <X className="w-5 h-5" />
+                            <button onClick={() => setToastMsg(null)} className="text-gray-400 hover:text-white">
+                                <X className="w-4 h-4" />
                             </button>
                         </div>
+                    </div>
+                )
+            }
 
-                        {/* Scrollable body */}
-                        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+            {/* ===== DETAIL MODAL / DRAWER ===== */}
+            {
+                selectedListing && (
+                    <>
+                        {/* Backdrop */}
+                        <div
+                            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
+                            onClick={() => setSelectedListing(null)}
+                        />
+                        {/* Panel */}
+                        <aside className="fixed top-0 right-0 h-full w-full max-w-lg bg-white z-[110] shadow-2xl flex flex-col overflow-hidden">
+                            {/* Header */}
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+                                <div>
+                                    <h2 className="text-lg font-bold text-brand-dark">Listing Details</h2>
+                                    <p className="text-xs text-gray-400 mt-0.5">ID: {selectedListing.id?.slice(0, 18)}…</p>
+                                </div>
+                                <button onClick={() => setSelectedListing(null)} className="p-2 rounded-full hover:bg-gray-100 text-gray-400">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
 
-                            {/* Image Gallery */}
-                            {(() => {
-                                const imgs = selectedListing.image_urls?.length
-                                    ? selectedListing.image_urls
-                                    : selectedListing.image_url
-                                        ? [selectedListing.image_url]
-                                        : [];
-                                return imgs.length > 0 ? (
-                                    <div>
-                                        <div className="relative rounded-2xl overflow-hidden bg-gray-100 aspect-video">
-                                            <img src={imgs[modalImageIdx]} alt="property" className="w-full h-full object-cover" />
+                            {/* Scrollable body */}
+                            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+
+                                {/* Image Gallery */}
+                                {(() => {
+                                    const imgs = selectedListing.image_urls?.length
+                                        ? selectedListing.image_urls
+                                        : selectedListing.image_url
+                                            ? [selectedListing.image_url]
+                                            : [];
+                                    return imgs.length > 0 ? (
+                                        <div>
+                                            <div className="relative rounded-2xl overflow-hidden bg-gray-100 aspect-video">
+                                                <img src={imgs[modalImageIdx]} alt="property" className="w-full h-full object-cover" />
+                                                {imgs.length > 1 && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => setModalImageIdx(i => Math.max(0, i - 1))}
+                                                            disabled={modalImageIdx === 0}
+                                                            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full w-8 h-8 flex items-center justify-center disabled:opacity-30"
+                                                        >‹</button>
+                                                        <button
+                                                            onClick={() => setModalImageIdx(i => Math.min(imgs.length - 1, i + 1))}
+                                                            disabled={modalImageIdx === imgs.length - 1}
+                                                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full w-8 h-8 flex items-center justify-center disabled:opacity-30"
+                                                        >›</button>
+                                                        <span className="absolute bottom-2 right-3 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">{modalImageIdx + 1}/{imgs.length}</span>
+                                                    </>
+                                                )}
+                                            </div>
                                             {imgs.length > 1 && (
-                                                <>
-                                                    <button
-                                                        onClick={() => setModalImageIdx(i => Math.max(0, i - 1))}
-                                                        disabled={modalImageIdx === 0}
-                                                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full w-8 h-8 flex items-center justify-center disabled:opacity-30"
-                                                    >‹</button>
-                                                    <button
-                                                        onClick={() => setModalImageIdx(i => Math.min(imgs.length - 1, i + 1))}
-                                                        disabled={modalImageIdx === imgs.length - 1}
-                                                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full w-8 h-8 flex items-center justify-center disabled:opacity-30"
-                                                    >›</button>
-                                                    <span className="absolute bottom-2 right-3 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">{modalImageIdx + 1}/{imgs.length}</span>
-                                                </>
+                                                <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+                                                    {imgs.map((url, i) => (
+                                                        <button key={i} onClick={() => setModalImageIdx(i)}
+                                                            className={`shrink-0 w-14 h-14 rounded-xl overflow-hidden border-2 transition-all ${modalImageIdx === i ? 'border-brand-green' : 'border-transparent'}`}>
+                                                            <img src={url} className="w-full h-full object-cover" alt={`thumb ${i}`} />
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             )}
                                         </div>
-                                        {imgs.length > 1 && (
-                                            <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
-                                                {imgs.map((url, i) => (
-                                                    <button key={i} onClick={() => setModalImageIdx(i)}
-                                                        className={`shrink-0 w-14 h-14 rounded-xl overflow-hidden border-2 transition-all ${modalImageIdx === i ? 'border-brand-green' : 'border-transparent'}`}>
-                                                        <img src={url} className="w-full h-full object-cover" alt={`thumb ${i}`} />
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="rounded-2xl bg-gray-100 aspect-video flex items-center justify-center">
-                                        <Home className="w-12 h-12 text-gray-300" />
-                                    </div>
-                                );
-                            })()}
-
-                            {/* Property Info */}
-                            <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
-                                <div className="flex items-start justify-between gap-2">
-                                    <div>
-                                        <h3 className="font-bold text-brand-dark text-base leading-snug">{selectedListing.location}</h3>
-                                        <p className="text-xs text-gray-400 mt-0.5">{selectedListing.property_type} · {selectedListing.size} sqm</p>
-                                    </div>
-                                    <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-bold border capitalize ${selectedListing.status === 'pending' ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                                        : selectedListing.status === 'approved' ? 'bg-green-100 text-brand-green border-green-200'
-                                            : 'bg-red-100 text-red-600 border-red-200'
-                                        }`}>{selectedListing.status}</span>
-                                </div>
-                                <p className="text-xl font-extrabold text-brand-dark">₦{selectedListing.price}</p>
-                                <div className="grid grid-cols-2 gap-2 text-xs">
-                                    <div className="bg-white rounded-xl px-3 py-2">
-                                        <p className="text-gray-400 mb-0.5">Title Document</p>
-                                        <p className="font-semibold">{selectedListing.title_document || '—'}</p>
-                                    </div>
-                                    <div className="bg-white rounded-xl px-3 py-2">
-                                        <p className="text-gray-400 mb-0.5">Availability</p>
-                                        <p className="font-semibold capitalize">{selectedListing.availability || 'Available'}</p>
-                                    </div>
-                                </div>
-                                {selectedListing.description && (
-                                    <div>
-                                        <p className="text-xs font-bold text-gray-500 mb-1">Description</p>
-                                        <p className="text-sm text-gray-600 leading-relaxed">{selectedListing.description}</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Submitter Contact */}
-                            <div>
-                                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Submitter Contact</p>
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
-                                        <div className="w-9 h-9 rounded-full bg-brand-green/10 text-brand-green flex items-center justify-center font-bold shrink-0">
-                                            {selectedListing.first_name?.[0]?.toUpperCase() || '?'}
+                                    ) : (
+                                        <div className="rounded-2xl bg-gray-100 aspect-video flex items-center justify-center">
+                                            <Home className="w-12 h-12 text-gray-300" />
                                         </div>
-                                        <p className="font-semibold text-sm">{selectedListing.first_name} {selectedListing.last_name}</p>
+                                    );
+                                })()}
+
+                                {/* Property Info */}
+                                <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                            <h3 className="font-bold text-brand-dark text-base leading-snug">{selectedListing.location}</h3>
+                                            <p className="text-xs text-gray-400 mt-0.5">{selectedListing.property_type} · {selectedListing.size} sqm</p>
+                                        </div>
+                                        <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-bold border capitalize ${selectedListing.status === 'pending' ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                                            : selectedListing.status === 'approved' ? 'bg-green-100 text-brand-green border-green-200'
+                                                : 'bg-red-100 text-red-600 border-red-200'
+                                            }`}>{selectedListing.status}</span>
                                     </div>
-                                    <a href={`mailto:${selectedListing.email}`}
-                                        className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 hover:bg-blue-50 transition-colors group">
-                                        <Mail className="w-4 h-4 text-gray-400 group-hover:text-blue-500" />
-                                        <span className="text-sm text-gray-700 group-hover:text-blue-600">{selectedListing.email}</span>
-                                    </a>
-                                    {selectedListing.phone && (
-                                        <a href={`tel:${selectedListing.phone}`}
-                                            className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 hover:bg-green-50 transition-colors group">
-                                            <Phone className="w-4 h-4 text-gray-400 group-hover:text-brand-green" />
-                                            <span className="text-sm text-gray-700 group-hover:text-brand-green">{selectedListing.phone}</span>
-                                        </a>
+                                    <p className="text-xl font-extrabold text-brand-dark">₦{selectedListing.price}</p>
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                        <div className="bg-white rounded-xl px-3 py-2">
+                                            <p className="text-gray-400 mb-0.5">Title Document</p>
+                                            <p className="font-semibold">{selectedListing.title_document || '—'}</p>
+                                        </div>
+                                        <div className="bg-white rounded-xl px-3 py-2">
+                                            <p className="text-gray-400 mb-0.5">Availability</p>
+                                            <p className="font-semibold capitalize">{selectedListing.availability || 'Available'}</p>
+                                        </div>
+                                    </div>
+                                    {selectedListing.description && (
+                                        <div>
+                                            <p className="text-xs font-bold text-gray-500 mb-1">Description</p>
+                                            <p className="text-sm text-gray-600 leading-relaxed">{selectedListing.description}</p>
+                                        </div>
                                     )}
                                 </div>
-                            </div>
 
-                            {/* Documents */}
-                            {selectedListing.document_urls?.length > 0 && (
+                                {/* Submitter Contact */}
                                 <div>
-                                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Documents</p>
+                                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Submitter Contact</p>
                                     <div className="space-y-2">
-                                        {selectedListing.document_urls.map((url, i) => (
-                                            <a key={i} href={url} target="_blank" rel="noreferrer"
-                                                className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 hover:bg-blue-100 transition-colors">
-                                                <FileDown className="w-4 h-4 text-blue-500" />
-                                                <span className="text-sm font-medium text-blue-700 truncate">Document {i + 1}</span>
-                                            </a>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Videos */}
-                            {selectedListing.video_urls?.length > 0 && (
-                                <div>
-                                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Videos</p>
-                                    <div className="space-y-3">
-                                        {selectedListing.video_urls.map((url, i) => (
-                                            <div key={i} className="rounded-2xl overflow-hidden bg-black aspect-video">
-                                                <video src={url} controls className="w-full h-full" />
+                                        <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                                            <div className="w-9 h-9 rounded-full bg-brand-green/10 text-brand-green flex items-center justify-center font-bold shrink-0">
+                                                {selectedListing.first_name?.[0]?.toUpperCase() || '?'}
                                             </div>
-                                        ))}
+                                            <p className="font-semibold text-sm">{selectedListing.first_name} {selectedListing.last_name}</p>
+                                        </div>
+                                        <a href={`mailto:${selectedListing.email}`}
+                                            className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 hover:bg-blue-50 transition-colors group">
+                                            <Mail className="w-4 h-4 text-gray-400 group-hover:text-blue-500" />
+                                            <span className="text-sm text-gray-700 group-hover:text-blue-600">{selectedListing.email}</span>
+                                        </a>
+                                        {selectedListing.phone && (
+                                            <a href={`tel:${selectedListing.phone}`}
+                                                className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 hover:bg-green-50 transition-colors group">
+                                                <Phone className="w-4 h-4 text-gray-400 group-hover:text-brand-green" />
+                                                <span className="text-sm text-gray-700 group-hover:text-brand-green">{selectedListing.phone}</span>
+                                            </a>
+                                        )}
                                     </div>
                                 </div>
+
+                                {/* Documents */}
+                                {selectedListing.document_urls?.length > 0 && (
+                                    <div>
+                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Documents</p>
+                                        <div className="space-y-2">
+                                            {selectedListing.document_urls.map((url, i) => (
+                                                <a key={i} href={url} target="_blank" rel="noreferrer"
+                                                    className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 hover:bg-blue-100 transition-colors">
+                                                    <FileDown className="w-4 h-4 text-blue-500" />
+                                                    <span className="text-sm font-medium text-blue-700 truncate">Document {i + 1}</span>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Videos */}
+                                {selectedListing.video_urls?.length > 0 && (
+                                    <div>
+                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Videos</p>
+                                        <div className="space-y-3">
+                                            {selectedListing.video_urls.map((url, i) => (
+                                                <div key={i} className="rounded-2xl overflow-hidden bg-black aspect-video">
+                                                    <video src={url} controls className="w-full h-full" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Submission date */}
+                                <p className="text-xs text-gray-400 text-center">
+                                    Submitted {new Date(selectedListing.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                            </div>
+
+                            {/* Footer actions */}
+                            {selectedListing.status === 'pending' && (
+                                <div className="shrink-0 px-6 py-4 border-t border-gray-100 bg-white flex gap-3">
+                                    <button
+                                        onClick={async () => { await handleApproveListing(selectedListing.id); setSelectedListing(null); }}
+                                        className="flex-1 bg-brand-green text-white py-3 rounded-xl font-bold hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <CheckCircle2 className="w-4 h-4" /> Approve Listing
+                                    </button>
+                                    <button
+                                        onClick={async () => { await handleRejectListing(selectedListing.id); setSelectedListing(null); }}
+                                        className="flex-1 bg-red-50 text-red-600 border border-red-200 py-3 rounded-xl font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <XCircle className="w-4 h-4" /> Reject
+                                    </button>
+                                </div>
                             )}
-
-                            {/* Submission date */}
-                            <p className="text-xs text-gray-400 text-center">
-                                Submitted {new Date(selectedListing.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                        </div>
-
-                        {/* Footer actions */}
-                        {selectedListing.status === 'pending' && (
-                            <div className="shrink-0 px-6 py-4 border-t border-gray-100 bg-white flex gap-3">
-                                <button
-                                    onClick={async () => { await handleApproveListing(selectedListing.id); setSelectedListing(null); }}
-                                    className="flex-1 bg-brand-green text-white py-3 rounded-xl font-bold hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <CheckCircle2 className="w-4 h-4" /> Approve Listing
-                                </button>
-                                <button
-                                    onClick={async () => { await handleRejectListing(selectedListing.id); setSelectedListing(null); }}
-                                    className="flex-1 bg-red-50 text-red-600 border border-red-200 py-3 rounded-xl font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <XCircle className="w-4 h-4" /> Reject
-                                </button>
-                            </div>
-                        )}
-                        {selectedListing.status === 'rejected' && (
-                            <div className="shrink-0 px-6 py-4 border-t border-gray-100 bg-white">
-                                <button
-                                    onClick={async () => { await handleApproveListing(selectedListing.id); setSelectedListing(null); }}
-                                    className="w-full bg-brand-green text-white py-3 rounded-xl font-bold hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <CheckCircle2 className="w-4 h-4" /> Re-approve Listing
-                                </button>
-                            </div>
-                        )}
-                    </aside>
-                </>
-            )}
-        </div>
+                            {selectedListing.status === 'rejected' && (
+                                <div className="shrink-0 px-6 py-4 border-t border-gray-100 bg-white">
+                                    <button
+                                        onClick={async () => { await handleApproveListing(selectedListing.id); setSelectedListing(null); }}
+                                        className="w-full bg-brand-green text-white py-3 rounded-xl font-bold hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <CheckCircle2 className="w-4 h-4" /> Re-approve Listing
+                                    </button>
+                                </div>
+                            )}
+                        </aside>
+                    </>
+                )
+            }
+        </div >
     );
 };
 
