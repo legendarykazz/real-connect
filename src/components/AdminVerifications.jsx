@@ -9,6 +9,9 @@ const AdminVerifications = () => {
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [rejectReason, setRejectReason] = useState('');
+    const [secureUrls, setSecureUrls] = useState({ idDoc: null, addressDoc: null, selfie: null });
+    const [loadingUrls, setLoadingUrls] = useState(false);
+
 
     const fetchVerifications = async () => {
         setLoading(true);
@@ -48,6 +51,40 @@ const AdminVerifications = () => {
     }, []);
 
     const filteredRequests = verifications.filter(v => v.status === filter);
+
+    const getSecureUrl = async (urlOrPath) => {
+        if (!urlOrPath) return null;
+        let path = urlOrPath;
+        if (urlOrPath.includes('/kyc_documents/')) {
+            path = urlOrPath.split('/kyc_documents/')[1];
+        }
+        try {
+            const { data, error } = await supabase.storage.from('kyc_documents').createSignedUrl(path, 60 * 60); // 1 hour
+            if (error) {
+                console.error('Error generating signed URL:', error);
+                return null;
+            }
+            return data.signedUrl;
+        } catch (err) {
+            console.error('Catch error generating signed URL:', err);
+            return null;
+        }
+    };
+
+    const handleSelectRequest = async (req) => {
+        setSelectedRequest(req);
+        setLoadingUrls(true);
+        setSecureUrls({ idDoc: null, addressDoc: null, selfie: null });
+
+        const [idDoc, addressDoc, selfie] = await Promise.all([
+            getSecureUrl(req.id_document_url),
+            getSecureUrl(req.address_document_url),
+            getSecureUrl(req.selfie_url)
+        ]);
+
+        setSecureUrls({ idDoc, addressDoc, selfie });
+        setLoadingUrls(false);
+    };
 
     const handleApprove = async (id, userId) => {
         if (!window.confirm('Are you sure you want to approve this verification?')) return;
@@ -205,7 +242,7 @@ const AdminVerifications = () => {
                                         </td>
                                         <td className="px-5 py-4 text-right">
                                             <button
-                                                onClick={() => setSelectedRequest(req)}
+                                                onClick={() => handleSelectRequest(req)}
                                                 className="bg-brand-dark text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-gray-800 transition-colors"
                                             >
                                                 Review
@@ -241,8 +278,8 @@ const AdminVerifications = () => {
                                 <div className="space-y-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><FileText className="w-4 h-4" /> ID Document ({selectedRequest.id_type})</p>
                                     <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex items-center justify-center p-2 relative">
-                                        {selectedRequest.id_document_url ? (
-                                            <img src={selectedRequest.id_document_url} alt="ID Document" className="w-full h-full object-contain" />
+                                        {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.idDoc ? (
+                                            <img src={secureUrls.idDoc} alt="ID Document" className="w-full h-full object-contain" />
                                         ) : <p className="text-gray-400 text-sm">No image</p>}
                                     </div>
                                     <p className="text-xs text-center text-gray-500 font-mono bg-gray-100 p-1 rounded">No: {selectedRequest.id_number}</p>
@@ -250,16 +287,16 @@ const AdminVerifications = () => {
                                 <div className="space-y-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><ImageIcon className="w-4 h-4" /> Selfie (Liveness)</p>
                                     <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex items-center justify-center p-2 relative">
-                                        {selectedRequest.selfie_url ? (
-                                            <img src={selectedRequest.selfie_url} alt="Selfie" className="w-full h-full object-cover rounded-xl" />
+                                        {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.selfie ? (
+                                            <img src={secureUrls.selfie} alt="Selfie" className="w-full h-full object-cover rounded-xl" />
                                         ) : <p className="text-gray-400 text-sm">No image</p>}
                                     </div>
                                 </div>
                                 <div className="space-y-2 sm:col-span-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><FileText className="w-4 h-4" /> Proof of Address</p>
                                     <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex items-center justify-center p-2 relative">
-                                        {selectedRequest.address_document_url ? (
-                                            <img src={selectedRequest.address_document_url} alt="Address Document" className="w-full h-full object-contain" />
+                                        {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.addressDoc ? (
+                                            <img src={secureUrls.addressDoc} alt="Address Document" className="w-full h-full object-contain" />
                                         ) : <p className="text-gray-400 text-sm">No image</p>}
                                     </div>
                                 </div>
