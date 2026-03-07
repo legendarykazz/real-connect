@@ -67,13 +67,6 @@ export default function KYCWizard() {
             const addressUrl = await uploadBase64Image(addressImage, 'address_doc');
             const selfieUrl = await uploadBase64Image(selfieImage, 'selfie');
 
-            // Find existing record just in case (e.g., they got rejected and are resubmitting)
-            const { data: existing } = await supabase
-                .from('user_verifications')
-                .select('id')
-                .eq('user_id', user?.id)
-                .single();
-
             const payload = {
                 user_id: user?.id,
                 full_name: fullName,
@@ -89,14 +82,7 @@ export default function KYCWizard() {
                 rejection_reason: null
             };
 
-            let err;
-            if (existing) {
-                const { error } = await supabase.from('user_verifications').update(payload).eq('user_id', user?.id);
-                err = error;
-            } else {
-                const { error } = await supabase.from('user_verifications').insert(payload);
-                err = error;
-            }
+            const { error: err } = await supabase.from('user_verifications').upsert(payload, { onConflict: 'user_id' });
 
             if (err) {
                 // Check if it's the unique constraint violation for ID Number
