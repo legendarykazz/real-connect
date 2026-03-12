@@ -935,6 +935,88 @@ const AdminDashboard = () => {
                         )
                     }
 
+                    {/* ===== INQUIRIES TAB ===== */}
+                    {activeTab === 'inquiries' && (
+                        <div className="text-left">
+                            <div className="mb-6">
+                                <h1 className="text-2xl font-bold">Inquiries & Messages</h1>
+                                <p className="text-gray-500 text-sm mt-1">Manage contact form submissions from potential leads</p>
+                            </div>
+
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-gray-50 border-b border-gray-100">
+                                            <tr>
+                                                <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Sender</th>
+                                                <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Subject / Message</th>
+                                                <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Date</th>
+                                                <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Status</th>
+                                                <th className="text-right px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {messagesLoading && (
+                                                <tr><td colSpan={5} className="text-center py-12 text-gray-400">Loading messages...</td></tr>
+                                            )}
+                                            {!messagesLoading && messages.length === 0 && (
+                                                <tr><td colSpan={5} className="text-center py-12 text-gray-400">No inquiries found.</td></tr>
+                                            )}
+                                            {!messagesLoading && messages.map((msg) => (
+                                                <tr key={msg.id} className={`hover:bg-gray-50/50 ${msg.status === 'new' ? 'bg-blue-50/20' : ''}`}>
+                                                    <td className="px-5 py-4 text-left">
+                                                        <p className="font-bold text-brand-dark">{msg.name}</p>
+                                                        <p className="text-xs text-gray-400">{msg.email}</p>
+                                                        {msg.phone && <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1"><Phone className="w-3 h-3" />{msg.phone}</p>}
+                                                    </td>
+                                                    <td className="px-5 py-4 max-w-xs md:max-w-md text-left">
+                                                        <p className="font-semibold text-brand-dark truncate mb-1">{msg.subject || 'No Subject'}</p>
+                                                        <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{msg.message}</p>
+                                                    </td>
+                                                    <td className="px-5 py-4 text-xs text-gray-400 text-left">
+                                                        {new Date(msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}<br />
+                                                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </td>
+                                                    <td className="px-5 py-4 text-left">
+                                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${msg.status === 'new' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                                                            {msg.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-5 py-4 text-right">
+                                                        <div className="flex items-center justify-end gap-2 text-right">
+                                                            {msg.status === 'new' ? (
+                                                                <button
+                                                                    onClick={() => handleUpdateMessageStatus(msg.id, 'replied')}
+                                                                    className="bg-brand-green text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition-colors"
+                                                                >
+                                                                    Mark Replied
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => handleUpdateMessageStatus(msg.id, 'new')}
+                                                                    className="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-200 transition-colors"
+                                                                >
+                                                                    Mark New
+                                                                </button>
+                                                            )}
+                                                            <button
+                                                                onClick={() => handleDeleteMessage(msg.id)}
+                                                                className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                    }
+
                     {/* ===== PLATFORM SETTINGS TAB ===== */}
                     {
                         activeTab === 'settings' && (
