@@ -64,6 +64,21 @@ serve(async (req) => {
                  </ul>
                  <p>Please log in to the <a href="https://realconnect-platform.vercel.app/admin">Admin Dashboard</a> to review the submitted documents (ID, Address Proof, Selfie).</p>
              `;
+        } else if (tableName === 'contact_messages') {
+            emailSubject = `📩 New Website Inquiry: ${record.subject || 'Contact Us Message'}`;
+            emailHtml = `
+                 <h2>New Contact Message</h2>
+                 <p>You have received a new message from the website contact form.</p>
+                 <ul>
+                     <li><strong>Name:</strong> ${record.name}</li>
+                     <li><strong>Email:</strong> ${record.email}</li>
+                     <li><strong>Phone:</strong> ${record.phone || 'N/A'}</li>
+                     <li><strong>Subject:</strong> ${record.subject || 'N/A'}</li>
+                 </ul>
+                 <p><strong>Message:</strong></p>
+                 <p style="background: #f4f4f4; padding: 15px; border-radius: 8px;">${record.message}</p>
+                 <p>Please log in to the <a href="https://realconnect-platform.vercel.app/admin">Admin Dashboard</a> to manage this inquiry.</p>
+             `;
         } else {
             return new Response(JSON.stringify({ message: "Ignored event or unknown table" }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
