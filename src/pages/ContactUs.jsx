@@ -59,7 +59,7 @@ const ContactUs = () => {
             window.scrollTo(0, 0);
         } catch (err) {
             console.error('Contact error:', err);
-            setError('Failed to send message. Please try again later.');
+            setError(err.message || 'Failed to send message. Please try again later.');
         } finally {
             setLoading(false);
         }
