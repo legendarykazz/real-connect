@@ -113,7 +113,8 @@ serve(async (req) => {
                 status: 200,
             })
         } else {
-            throw new Error(`Resend Error: ${JSON.stringify(resData)}`)
+            console.error('Resend API Error Details:', JSON.stringify(resData, null, 2))
+            throw new Error(`Resend Error: ${resData.message || JSON.stringify(resData)}`)
         }
 
     } catch (error) {
