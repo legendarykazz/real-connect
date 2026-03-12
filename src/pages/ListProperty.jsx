@@ -5,13 +5,61 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import MapCoordinatePicker from '../components/MapCoordinatePicker';
 
+// --- Image Compression Utility ---
+// Resizes images to max 1200px width and compresses to JPEG 80% quality
+// A 5MB phone photo becomes ~200-400KB → much faster uploads
+const compressImage = (file, maxWidth = 1200, quality = 0.8) => {
+    return new Promise((resolve) => {
+        // Skip non-image files
+        if (!file.type.startsWith('image/')) {
+            resolve(file);
+            return;
+        }
+        const img = new Image();
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        img.onload = () => {
+            let { width, height } = img;
+
+            // Only resize if wider than maxWidth
+            if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob(
+                (blob) => {
+                    // Create a new File from the compressed blob
+                    const compressedFile = new File([blob], file.name, {
+                        type: 'image/jpeg',
+                        lastModified: Date.now(),
+                    });
+                    resolve(compressedFile);
+                },
+                'image/jpeg',
+                quality
+            );
+        };
+
+        img.onerror = () => resolve(file); // Fallback to original on error
+        img.src = URL.createObjectURL(file);
+    });
+};
+
 // --- Drag & Drop Image Upload Component ---
 const ImageDropZone = ({ images, setImages }) => {
     const [isDragging, setIsDragging] = useState(false);
 
-    const processFiles = (files) => {
+    const processFiles = async (files) => {
         const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
-        const newImages = imageFiles.map(file => ({
+        // Compress images client-side before storing
+        const compressed = await Promise.all(imageFiles.map(f => compressImage(f)));
+        const newImages = compressed.map(file => ({
             file,
             preview: URL.createObjectURL(file),
             name: file.name
@@ -305,8 +353,10 @@ const ListProperty = () => {
         };
 
         try {
-            setUploadProgress('Uploading photos...');
-            const imageUrls = await Promise.all(images.slice(0, 4).map(img => uploadFile(img.file, 'images')));
+            setUploadProgress('Compressing & uploading photos...');
+            // Compress images before upload (safety net in case processFiles was skipped)
+            const compressedImages = await Promise.all(images.slice(0, 4).map(img => compressImage(img.file)));
+            const imageUrls = await Promise.all(compressedImages.map(file => uploadFile(file, 'images')));
 
             setUploadProgress('Uploading documents...');
             const docUrls = await Promise.all(docs.slice(0, 2).map(doc => uploadFile(doc.file, 'docs')));

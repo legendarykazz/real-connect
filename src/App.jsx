@@ -1,16 +1,18 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
-import BrowseLands from './pages/BrowseLands';
-import PropertyDetails from './pages/PropertyDetails';
-import ListProperty from './pages/ListProperty';
-import AdminDashboard from './pages/AdminDashboard';
-import Login from './pages/Login';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import PrivacyPolicy from './pages/PrivacyPolicy';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+
+// Lazy-loaded pages — only downloaded when the user navigates to them
+const BrowseLands = React.lazy(() => import('./pages/BrowseLands'));
+const PropertyDetails = React.lazy(() => import('./pages/PropertyDetails'));
+const ListProperty = React.lazy(() => import('./pages/ListProperty'));
+const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
+const Login = React.lazy(() => import('./pages/Login'));
+const ForgotPassword = React.lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
+const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
 
 // -------------------------------------------------------
 // ADMIN EMAILS — only these emails can access /admin
@@ -19,6 +21,16 @@ const ADMIN_EMAILS = [
   'amjustsam28@gmail.com',
   'zephaniahmusa99@gmail.com',
 ];
+
+// Loading spinner shown while lazy pages load
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="text-center">
+      <div className="w-10 h-10 border-4 border-brand-green border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-gray-500 font-semibold text-sm">Loading...</p>
+    </div>
+  </div>
+);
 
 // Protected route: only logged-in users can access
 const ProtectedRoute = ({ children }) => {
@@ -57,26 +69,28 @@ function App() {
       <AppProvider>
         <Router>
           <div className="min-h-screen font-sans bg-brand-light selection:bg-brand-green selection:text-white">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/browse" element={<BrowseLands />} />
-              <Route path="/property/:id" element={<PropertyDetails />} />
-              <Route path="/list-property" element={
-                <ProtectedRoute>
-                  <ListProperty />
-                </ProtectedRoute>
-              } />
-              <Route path="/login" element={<Login />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/privacy" element={<PrivacyPolicy />} />
-              {/* Admin: only the owner email can access */}
-              <Route path="/admin" element={
-                <AdminRoute>
-                  <AdminDashboard />
-                </AdminRoute>
-              } />
-            </Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/browse" element={<BrowseLands />} />
+                <Route path="/property/:id" element={<PropertyDetails />} />
+                <Route path="/list-property" element={
+                  <ProtectedRoute>
+                    <ListProperty />
+                  </ProtectedRoute>
+                } />
+                <Route path="/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                {/* Admin: only the owner email can access */}
+                <Route path="/admin" element={
+                  <AdminRoute>
+                    <AdminDashboard />
+                  </AdminRoute>
+                } />
+              </Routes>
+            </Suspense>
           </div>
         </Router>
       </AppProvider>

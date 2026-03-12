@@ -103,7 +103,7 @@ const BrowseLands = () => {
         <div className={`bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 ${!mobile ? 'min-w-[320px] max-w-[320px] snap-center shrink-0' : ''}`}>
             <Link to={`/property/${property.id}`} className="block relative h-56 bg-gray-100">
                 {property.image_url ? (
-                    <img src={property.image_url} alt={property.location} className="w-full h-full object-cover" />
+                    <img src={property.image_url} alt={property.location} className="w-full h-full object-cover" loading="lazy" />
                 ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-gray-300">
                         <Home className="w-12 h-12 mb-2" />
