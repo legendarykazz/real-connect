@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     FileText, Users, Settings, Search, Bell, CheckCircle2,
     XCircle, ShieldCheck, MapPin, Menu, X, UploadCloud,
-    UserCheck, UserX, Shield, Trash2, Plus, Save, AlertCircle, Home, Eye, Phone, Mail, FileDown, PlayCircle
+    UserCheck, UserX, Shield, Trash2, Plus, Save, AlertCircle, Home, Eye, Phone, Mail, FileDown, PlayCircle,
+    MessageSquare
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
