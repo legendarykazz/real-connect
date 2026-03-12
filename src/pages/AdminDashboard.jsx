@@ -274,18 +274,6 @@ const AdminDashboard = () => {
         fetchListings();
     };
 
-    const handleSetAvailability = async (id, availability) => {
-        // Optimistic update
-        setListings(prev => prev.map(l => l.id === id ? { ...l, availability } : l));
-        const { error } = await supabase
-            .from('properties')
-            .update({ availability })
-            .eq('id', id);
-        if (error) {
-            alert('Error updating availability: ' + error.message);
-            fetchListings(); // revert
-        }
-    };
 
     // ---- ADMIN POST ----
     const handlePostSubmit = async (e) => {
