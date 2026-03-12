@@ -188,6 +188,25 @@ const AdminDashboard = () => {
         }
     };
 
+    // ---- SET AVAILABILITY (Sold / Not Available) ----
+    const handleSetAvailability = async (listingId, newValue) => {
+        // Optimistic UI update
+        setListings(prev =>
+            prev.map(l => l.id === listingId ? { ...l, availability: newValue } : l)
+        );
+        try {
+            const { error } = await supabase
+                .from('properties')
+                .update({ availability: newValue })
+                .eq('id', listingId);
+            if (error) throw error;
+        } catch (err) {
+            alert('Error updating availability: ' + err.message);
+            // Revert on failure
+            fetchListings();
+        }
+    };
+
     // ---- REALTIME SUBSCRIPTION ----
     useEffect(() => {
         fetchListings();

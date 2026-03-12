@@ -99,11 +99,12 @@ const AdminVerifications = () => {
 
             if (verifyErr) throw verifyErr;
 
-            // Update user_profiles is_verified
+            // Upsert user_profiles is_verified (upsert instead of update so a row
+            // is created if the user doesn't have one yet — update would silently
+            // affect 0 rows and leave the user blocked)
             const { error: profileErr } = await supabase
                 .from('user_profiles')
-                .update({ is_verified: true })
-                .eq('user_id', userId);
+                .upsert({ user_id: userId, is_verified: true }, { onConflict: 'user_id' });
 
             if (profileErr) throw profileErr;
 

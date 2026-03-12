@@ -117,6 +117,16 @@ const BrowseLands = () => {
                 <div className="absolute top-4 right-4 bg-black/40 backdrop-blur text-white text-xs font-bold px-2 py-1 rounded-full">
                     {property.property_type}
                 </div>
+                {property.availability === 'sold' && (
+                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center">
+                        <span className="bg-red-600 text-white px-4 py-2 rounded-full font-black text-lg tracking-wider transform -rotate-12 border-2 border-white">SOLD</span>
+                    </div>
+                )}
+                {property.availability === 'not_available' && (
+                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center">
+                        <span className="bg-gray-800 text-white px-4 py-2 rounded-full font-black text-sm tracking-wider border-2 border-white">NOT AVAILABLE</span>
+                    </div>
+                )}
             </Link>
             <Link to={`/property/${property.id}`} className="block p-5">
                 <h3 className="text-xl font-bold text-brand-dark mb-1">₦{property.price}</h3>

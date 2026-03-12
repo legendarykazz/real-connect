@@ -69,7 +69,12 @@ const PropertyDetails = () => {
                     type: data.property_type || '—',
                     titleDocument: data.title_document || '—',
                     surveyPlan: realDocs.length > 0 ? 'Available (Yes)' : 'Not Provided',
-                    status: data.status === 'approved' ? 'Available' : (data.status || 'Pending'),
+                    status: (() => {
+                        if (data.status !== 'approved') return data.status ? data.status.charAt(0).toUpperCase() + data.status.slice(1) : 'Pending';
+                        if (data.availability === 'sold') return 'Sold';
+                        if (data.availability === 'not_available') return 'Not Available';
+                        return 'Available';
+                    })(),
                     description: data.description || 'No description provided.',
                     images: allImages,
                     documents: realDocs,
