@@ -3,7 +3,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 // Configure your Admin Emails here
 const ADMIN_EMAILS = [
     'amjustsam28@gmail.com',
-    'zephaniahmusa99@gmail.com'
+    'zephaniahmusa99@gmail.com',
+    'racheldebby63@gmail.com'
 ];
 
 const corsHeaders = {
@@ -87,16 +88,16 @@ serve(async (req) => {
         }
 
         // Prepare the payload for Resend
-        // NOTE: If using onboarding@resend.dev, you can only send to your own registered email.
+        // NOTE: In trial mode, you can only send to verified emails. 
+        // Using racheldebby63@gmail.com as the sole recipient to ensure delivery.
         const resendPayload = {
             from: 'onboarding@resend.dev', 
-            to: ADMIN_EMAILS[0], // Testing with just one recipient first
+            to: ['racheldebby63@gmail.com'], 
             subject: emailSubject,
             html: emailHtml,
         }
 
-        console.log('Attempting to send email via Resend...');
-        console.log('Payload:', JSON.stringify(resendPayload, null, 2));
+        console.log('Attempting to send email via Resend to verified admin: racheldebby63@gmail.com');
 
         // Send the email via Resend API
         const res = await fetch('https://api.resend.com/emails', {
