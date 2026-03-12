@@ -62,7 +62,7 @@ const Footer = () => {
                         © {new Date().getFullYear()} RealConnect. All rights reserved.
                     </p>
                     <div className="flex space-x-6 text-sm text-gray-500">
-                        <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+                        <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
                         <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
                     </div>
                 </div>
