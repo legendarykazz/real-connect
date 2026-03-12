@@ -96,15 +96,7 @@ const Navbar = () => {
     };
 
     const handleContactClick = () => {
-        // Navigate home then scroll to contact section
-        if (window.location.pathname !== '/') {
-            navigate('/');
-            setTimeout(() => {
-                document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
-            }, 300);
-        } else {
-            document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
-        }
+        navigate('/contact');
     };
 
     const getNotificationIcon = (type) => {
