@@ -62,6 +62,11 @@ const AdminDashboard = () => {
         maintenanceMode: false,
     });
 
+    // Inquiries/Messages state
+    const [messages, setMessages] = useState([]);
+    const [messagesLoading, setMessagesLoading] = useState(false);
+    const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+
     // New listing form
     const [newListing, setNewListing] = useState({
         location: '', size: '', price: '',
@@ -142,6 +147,52 @@ const AdminDashboard = () => {
             console.error('Error fetching users:', err);
         } finally {
             setUsersLoading(false);
+        }
+    };
+
+    // ---- FETCH CONTACT MESSAGES ----
+    const fetchMessages = async () => {
+        setMessagesLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('contact_messages')
+                .select('*')
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            setMessages(data || []);
+            setUnreadMessagesCount((data || []).filter(m => m.status === 'new').length);
+        } catch (err) {
+            console.error('Error fetching messages:', err);
+        } finally {
+            setMessagesLoading(false);
+        }
+    };
+
+    const handleUpdateMessageStatus = async (id, newStatus) => {
+        // Optimistic update
+        setMessages(prev => prev.map(m => m.id === id ? { ...m, status: newStatus } : m));
+        try {
+            const { error } = await supabase
+                .from('contact_messages')
+                .update({ status: newStatus })
+                .eq('id', id);
+            if (error) throw error;
+            setUnreadMessagesCount(prev => (newStatus === 'new' ? prev + 1 : Math.max(0, prev - 1)));
+        } catch (err) {
+            alert('Error updating message status: ' + err.message);
+            fetchMessages();
+        }
+    };
+
+    const handleDeleteMessage = async (id) => {
+        if (!window.confirm('Delete this message permanently?')) return;
+        try {
+            const { error } = await supabase.from('contact_messages').delete().eq('id', id);
+            if (error) throw error;
+            setMessages(prev => prev.filter(m => m.id !== id));
+            setUnreadMessagesCount(prev => Math.max(0, prev - 1));
+        } catch (err) {
+            alert('Error deleting message: ' + err.message);
         }
     };
 
@@ -241,6 +292,14 @@ const AdminDashboard = () => {
                 if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
                 toastTimerRef.current = setTimeout(() => setToastMsg(null), 7000);
             })
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'contact_messages' }, (payload) => {
+                setUnreadMessagesCount(n => n + 1);
+                setToastMsg(`📩 New Inquiry from ${payload.new.name}! Check the Inquiries tab.`);
+                setBellAlerts(n => n + 1);
+                if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+                toastTimerRef.current = setTimeout(() => setToastMsg(null), 7000);
+                if (activeTab === 'inquiries') fetchMessages();
+            })
             .subscribe();
 
         return () => {
@@ -252,6 +311,10 @@ const AdminDashboard = () => {
     useEffect(() => {
         if (activeTab === 'users') fetchUsers();
         if (activeTab === 'listings') setBellAlerts(0);
+        if (activeTab === 'inquiries') {
+            fetchMessages();
+            setBellAlerts(0);
+        }
     }, [activeTab]);
 
     // ---- APPROVE / REJECT ----
@@ -381,6 +444,7 @@ const AdminDashboard = () => {
                     {tabBtn('listings', <FileText className="w-5 h-5 mr-3" />, 'All Listings', pendingCount)}
                     {tabBtn('verifications', <ShieldCheck className="w-5 h-5 mr-3" />, 'Verifications', pendingVerificationsCount)}
                     {tabBtn('users', <Users className="w-5 h-5 mr-3" />, 'Users & Sellers', 0)}
+                    {tabBtn('inquiries', <MessageSquare className="w-5 h-5 mr-3" />, 'Inquiries', unreadMessagesCount)}
                     {tabBtn('settings', <Settings className="w-5 h-5 mr-3" />, 'Platform Settings', 0)}
                 </nav>
 
