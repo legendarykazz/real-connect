@@ -87,12 +87,16 @@ serve(async (req) => {
         }
 
         // Prepare the payload for Resend
+        // NOTE: If using onboarding@resend.dev, you can only send to your own registered email.
         const resendPayload = {
-            from: 'RealConnect Admin <onboarding@resend.dev>', // Update this to your verified Resend domain when ready e.g., 'RealConnect <noreply@yourdomain.com>'
-            to: ADMIN_EMAILS,
+            from: 'onboarding@resend.dev', 
+            to: ADMIN_EMAILS[0], // Testing with just one recipient first
             subject: emailSubject,
             html: emailHtml,
         }
+
+        console.log('Attempting to send email via Resend...');
+        console.log('Payload:', JSON.stringify(resendPayload, null, 2));
 
         // Send the email via Resend API
         const res = await fetch('https://api.resend.com/emails', {
