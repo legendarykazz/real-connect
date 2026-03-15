@@ -640,8 +640,8 @@ const ListProperty = () => {
                 </div>
             )}
         </div>
-    );
-}
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24 font-sans text-brand-dark">
