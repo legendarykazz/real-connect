@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.user_verifications (
     
     -- ID Document Details
     id_type TEXT NOT NULL, -- e.g., 'National ID', 'Passport', 'Driver License'
-    id_number TEXT UNIQUE NOT NULL, -- Unique constraint to prevent duplicates
+    id_number TEXT NOT NULL, -- Removed UNIQUE to allow re-registration
     id_document_url TEXT NOT NULL,
     
     -- Proof of Address Details
@@ -30,6 +30,12 @@ CREATE TABLE IF NOT EXISTS public.user_verifications (
     -- Ensure a user can only have one active verification record
     UNIQUE(user_id)
 );
+
+-- Ensure the NIN is unique ONLY when the status is 'pending' or 'approved'.
+-- This allows rejected users (e.g., who create a new account) to reapply with the same NIN.
+CREATE UNIQUE INDEX IF NOT EXISTS active_id_number_idx 
+ON public.user_verifications (id_number) 
+WHERE status IN ('pending', 'approved');
 
 -- Turn on Row Level Security
 ALTER TABLE public.user_verifications ENABLE ROW LEVEL SECURITY;
