@@ -3,7 +3,7 @@ import {
     FileText, Users, Settings, Search, Bell, CheckCircle2,
     XCircle, ShieldCheck, MapPin, Menu, X, UploadCloud,
     UserCheck, UserX, Shield, Trash2, Plus, Save, AlertCircle, Home, Eye, Phone, Mail, FileDown, PlayCircle,
-    MessageSquare
+    MessageSquare, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -36,6 +36,9 @@ const AdminDashboard = () => {
     // Detail modal
     const [selectedListing, setSelectedListing] = useState(null);
     const [modalImageIdx, setModalImageIdx] = useState(0);
+    const [showLightbox, setShowLightbox] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState(0);
+    const [lightboxMedia, setLightboxMedia] = useState([]);
 
     const [toastMsg, setToastMsg] = useState(null);
     const [bellAlerts, setBellAlerts] = useState(0);
@@ -769,7 +772,15 @@ const AdminDashboard = () => {
                                                         <div className="flex items-center gap-2">
                                                             {/* View details button */}
                                                             <button
-                                                                onClick={() => { setSelectedListing(listing); setModalImageIdx(0); }}
+                                                                onClick={() => { 
+                                                                    setSelectedListing(listing); 
+                                                                    setModalImageIdx(0); 
+                                                                    const media = [];
+                                                                    if (listing.image_urls?.length) listing.image_urls.forEach(u => media.push({ url: u, type: 'image' }));
+                                                                    else if (listing.image_url) media.push({ url: listing.image_url, type: 'image' });
+                                                                    if (listing.video_urls?.length) listing.video_urls.forEach(u => media.push({ url: u, type: 'video' }));
+                                                                    setLightboxMedia(media);
+                                                                }}
                                                                 className="bg-blue-50 text-blue-600 hover:bg-blue-100 p-1.5 rounded-lg transition-colors"
                                                                 title="View full details"
                                                             >
@@ -1183,8 +1194,11 @@ const AdminDashboard = () => {
                                             : [];
                                     return imgs.length > 0 ? (
                                         <div>
-                                            <div className="relative rounded-2xl overflow-hidden bg-gray-100 aspect-video">
+                                            <div className="relative rounded-2xl overflow-hidden bg-gray-100 aspect-video group cursor-pointer" onClick={() => { setLightboxIndex(modalImageIdx); setShowLightbox(true); }}>
                                                 <img src={imgs[modalImageIdx]} alt="property" className="w-full h-full object-cover" />
+                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                                                    <span className="bg-white/90 text-brand-dark px-3 py-1.5 rounded-full text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">Click to Enlarge</span>
+                                                </div>
                                                 {imgs.length > 1 && (
                                                     <>
                                                         <button
@@ -1297,8 +1311,13 @@ const AdminDashboard = () => {
                                         <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Videos</p>
                                         <div className="space-y-3">
                                             {selectedListing.video_urls.map((url, i) => (
-                                                <div key={i} className="rounded-2xl overflow-hidden bg-black aspect-video">
-                                                    <video src={url} controls className="w-full h-full" />
+                                                <div key={i} className="rounded-2xl overflow-hidden bg-black aspect-video relative group cursor-pointer" onClick={() => { setLightboxIndex((selectedListing.image_urls?.length || 1) + i); setShowLightbox(true); }}>
+                                                    <video src={url} className="w-full h-full object-cover opacity-80" />
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-all">
+                                                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg">
+                                                            <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-brand-dark border-b-[6px] border-b-transparent ml-1"></div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -1341,7 +1360,41 @@ const AdminDashboard = () => {
                         </aside>
                     </>
                 )
-            }
+             }
+
+            {/* ===== LIGHTBOX OVERLAY ===== */}
+            {showLightbox && lightboxMedia.length > 0 && (
+                <div className="fixed inset-0 z-[250] bg-black/95 flex flex-col items-center justify-center animate-fade-in">
+                    <div className="absolute top-6 left-6 text-white/80 font-bold">{lightboxIndex + 1} / {lightboxMedia.length}</div>
+                    <button 
+                        onClick={() => setShowLightbox(false)} 
+                        className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all z-50"
+                    >
+                        <X className="w-8 h-8" />
+                    </button>
+
+                    <button 
+                        onClick={() => setLightboxIndex(prev => (prev - 1 + lightboxMedia.length) % lightboxMedia.length)}
+                        className="absolute left-6 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all z-10 hidden sm:block"
+                    >
+                        <ChevronLeft className="w-8 h-8" />
+                    </button>
+                    <button 
+                        onClick={() => setLightboxIndex(prev => (prev + 1) % lightboxMedia.length)}
+                        className="absolute right-6 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all z-10 hidden sm:block"
+                    >
+                        <ChevronRight className="w-8 h-8" />
+                    </button>
+
+                    <div className="w-full max-w-5xl max-h-[80vh] flex items-center justify-center p-4">
+                        {lightboxMedia[lightboxIndex].type === 'image' ? (
+                            <img src={lightboxMedia[lightboxIndex].url} alt="Lightbox" className="max-w-full max-h-[80vh] object-contain" />
+                        ) : (
+                            <video src={lightboxMedia[lightboxIndex].url} controls autoPlay className="max-w-full max-h-[80vh] object-contain" />
+                        )}
+                    </div>
+                </div>
+            )}
         </div >
     );
 };

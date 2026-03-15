@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Camera, MapPin, CheckCircle2, ChevronRight, UploadCloud, Info, ShieldCheck, X, Image, Camera as CameraIcon, RefreshCw, Check } from 'lucide-react';
+import { Camera, MapPin, CheckCircle2, ChevronRight, UploadCloud, Info, ShieldCheck, X, Image, Camera as CameraIcon, RefreshCw, Check, ZoomIn, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -119,13 +119,14 @@ const ImageDropZone = ({ images, setImages }) => {
             {images.length > 0 && (
                 <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     {images.map((img, index) => (
-                        <div key={index} className="relative group rounded-xl overflow-hidden shadow-sm border border-gray-200 aspect-square">
+                        <div key={index} className="relative group rounded-xl overflow-hidden shadow-sm border border-gray-200 aspect-square cursor-pointer">
                             <img src={img.preview} alt={img.name} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                 <button
                                     type="button"
-                                    onClick={() => removeImage(index)}
+                                    onClick={(e) => { e.stopPropagation(); removeImage(index); }}
                                     className="bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors"
+                                    title="Remove image"
                                 >
                                     <X className="w-4 h-4" />
                                 </button>
@@ -177,6 +178,11 @@ const ListProperty = () => {
     const [cameraLoading, setCameraLoading] = useState(false);
     const videoRef = React.useRef(null);
     const canvasRef = React.useRef(null);
+
+    // Lightbox for all previews
+    const [showLightbox, setShowLightbox] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState(0);
+    const [lightboxMedia, setLightboxMedia] = useState([]); // [{url, type}]
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -287,20 +293,35 @@ const ListProperty = () => {
         setError(null);
 
         const uploadKycFile = async (file, prefix) => {
-            const ext = file.type?.split('/')[1]?.split('+')[0] || (file.name ? file.name.split('.').pop() : 'jpg');
-            const path = `${user.id}/${prefix}_${Date.now()}.${ext}`;
-            const { error: uploadError } = await supabase.storage.from('kyc_documents').upload(path, file);
-            if (uploadError) throw new Error(`${prefix} upload failed: ` + uploadError.message);
-            return supabase.storage.from('kyc_documents').getPublicUrl(path).data.publicUrl;
+            try {
+                // Compress if it's an image
+                const processedFile = file.type?.startsWith('image/') ? await compressImage(file) : file;
+                
+                const ext = processedFile.type?.split('/')[1]?.split('+')[0] || (processedFile.name ? processedFile.name.split('.').pop() : 'jpg');
+                const path = `${user.id}/${prefix}_${Date.now()}.${ext}`;
+                
+                console.log(`Uploading ${prefix}:`, { name: processedFile.name, type: processedFile.type, size: processedFile.size });
+                
+                const { error: uploadError } = await supabase.storage.from('kyc_documents').upload(path, processedFile);
+                if (uploadError) {
+                    console.error(`${prefix} upload error details:`, uploadError);
+                    throw new Error(`${prefix} upload failed: ` + uploadError.message);
+                }
+                
+                const { data: { publicUrl } } = supabase.storage.from('kyc_documents').getPublicUrl(path);
+                return publicUrl;
+            } catch (err) {
+                console.error(`Error in uploadKycFile for ${prefix}:`, err);
+                throw err;
+            }
         };
 
         try {
-            // Upload all 3 documents
-            const [idDocUrl, addressDocUrl, selfieDocUrl] = await Promise.all([
-                uploadKycFile(kycDoc, 'id'),
-                uploadKycFile(kycAddressDoc, 'address'),
-                uploadKycFile(kycSelfie, 'selfie')
-            ]);
+            // Upload documents one by one (Sequential) for better reliability on mobile
+            // instead of Promise.all which can overwhelm spotty connections
+            const idDocUrl = await uploadKycFile(kycDoc, 'id');
+            const addressDocUrl = await uploadKycFile(kycAddressDoc, 'address');
+            const selfieDocUrl = await uploadKycFile(kycSelfie, 'selfie');
 
             // Save Request to Database
             const { error: dbError } = await supabase
@@ -519,12 +540,15 @@ const ListProperty = () => {
                                             Open Camera for Liveness Check
                                         </button>
                                     ) : (
-                                        <div className="relative w-32 h-32 mx-auto sm:mx-0 rounded-2xl overflow-hidden shadow-md border-2 border-brand-green">
+                                        <div className="relative w-32 h-32 mx-auto sm:mx-0 rounded-2xl overflow-hidden shadow-md border-2 border-brand-green group cursor-pointer" onClick={() => { setLightboxMedia([{url: kycSelfiePreview, type: 'image'}]); setLightboxIndex(0); setShowLightbox(true); }}>
                                             <img src={kycSelfiePreview} alt="Selfie" className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                                                <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            </div>
                                             <button
                                                 type="button"
-                                                onClick={startCamera}
-                                                className="absolute bottom-1 right-1 bg-brand-green text-white p-1.5 rounded-lg shadow-lg hover:bg-green-700 transition-colors"
+                                                onClick={(e) => { e.stopPropagation(); startCamera(); }}
+                                                className="absolute bottom-1 right-1 bg-brand-green text-white p-1.5 rounded-lg shadow-lg hover:bg-green-700 transition-colors z-10"
                                                 title="Retake Photo"
                                             >
                                                 <RefreshCw className="w-4 h-4" />
@@ -594,9 +618,30 @@ const ListProperty = () => {
                         </form>
                     )}
                 </div>
-            </div>
-        );
-    }
+            
+
+            {/* Lightbox for previews */}
+            {showLightbox && lightboxMedia.length > 0 && (
+                <div className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center p-4 animate-fade-in">
+                    <button 
+                        onClick={() => setShowLightbox(false)} 
+                        className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all z-[210]"
+                    >
+                        <X className="w-8 h-8" />
+                    </button>
+
+                    <div className="w-full max-w-5xl max-h-[85vh] flex items-center justify-center">
+                        {lightboxMedia[lightboxIndex].type === 'image' ? (
+                            <img src={lightboxMedia[lightboxIndex].url} alt="Lightbox Preview" className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" />
+                        ) : (
+                            <video src={lightboxMedia[lightboxIndex].url} controls autoPlay className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" />
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24 font-sans text-brand-dark">
@@ -773,12 +818,12 @@ const ListProperty = () => {
                             {videos.length > 0 && (
                                 <div className="mt-3 grid grid-cols-2 gap-4">
                                     {videos.map((vid, i) => (
-                                        <div key={i} className="relative rounded-xl overflow-hidden border group bg-black aspect-video">
+                                        <div key={i} className="relative rounded-xl overflow-hidden border group bg-black aspect-video cursor-pointer" onClick={() => { setLightboxMedia(videos.map(v => ({url: v.preview, type: 'video'}))); setLightboxIndex(i); setShowLightbox(true); }}>
                                             <video src={vid.preview} className="w-full h-full object-cover opacity-70" />
                                             <div className="absolute inset-0 flex items-center justify-center"><span className="text-white text-2xl">▶</span></div>
                                             <p className="absolute bottom-1 left-2 text-white text-[10px] truncate max-w-[80%]">{vid.name}</p>
-                                            <button type="button" onClick={() => setVideos(p => p.filter((_, j) => j !== i))}
-                                                className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button type="button" onClick={(e) => { e.stopPropagation(); setVideos(p => p.filter((_, j) => j !== i)); }}
+                                                className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                                 <X className="w-3 h-3" />
                                             </button>
                                         </div>
@@ -786,18 +831,71 @@ const ListProperty = () => {
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </div> {/* End Section 3 */}
 
-                    {/* Submit */}
-                    <button disabled={loading || !user} type="submit" className="w-full bg-brand-green hover:bg-green-700 text-white font-extrabold py-5 rounded-2xl shadow-xl transition-all transform hover:-translate-y-1 flex justify-center items-center text-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                        {loading ? (uploadProgress || 'Submitting...') : 'Submit For Verification'}
-                        {!loading && <ChevronRight className="ml-2 w-6 h-6" />}
-                    </button>
-                    <p className="text-center text-sm text-gray-500 mt-4 flex items-center justify-center">
-                        <ShieldCheck className="w-4 h-4 mr-1 text-brand-green" /> Your data is secure. We never publish without your final consent.
-                    </p>
+                    <div className="pt-8 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="text-sm text-gray-400 font-medium">
+                            {images.length > 0 && <span>✅ {images.length} photos ready</span>}
+                            {uploadProgress && <span className="block text-brand-green font-bold animate-pulse mt-1">{uploadProgress}</span>}
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={loading || !user}
+                            className="w-full md:w-auto bg-brand-green text-white text-lg font-bold py-4 px-12 rounded-2xl shadow-xl hover:bg-green-700 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center group"
+                        >
+                            {loading ? (
+                                <RefreshCw className="w-5 h-5 animate-spin mr-3" />
+                            ) : (
+                                <CheckCircle2 className="w-5 h-5 mr-3 group-hover:rotate-12 transition-transform" />
+                            )}
+                            {loading ? 'Submitting...' : 'Submit Listing for Approval'}
+                        </button>
+                    </div>
                 </form>
             </div>
+
+            {/* Lightbox for previews */}
+            {showLightbox && lightboxMedia.length > 0 && (
+                <div className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center p-4 animate-fade-in">
+                    <button 
+                        onClick={() => setShowLightbox(false)} 
+                        className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all z-[210]"
+                    >
+                        <X className="w-8 h-8" />
+                    </button>
+
+                    {lightboxMedia.length > 1 && (
+                        <>
+                            <button 
+                                onClick={() => setLightboxIndex(prev => (prev - 1 + lightboxMedia.length) % lightboxMedia.length)}
+                                className="absolute left-6 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all z-[210] hidden sm:block"
+                            >
+                                <ChevronLeft className="w-8 h-8" />
+                            </button>
+                            <button 
+                                onClick={() => setLightboxIndex(prev => (prev + 1) % lightboxMedia.length)}
+                                className="absolute right-6 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all z-[210] hidden sm:block"
+                            >
+                                <ChevronRight className="w-8 h-8" />
+                            </button>
+                        </>
+                    )}
+
+                    <div className="w-full max-w-5xl max-h-[85vh] flex items-center justify-center">
+                        {lightboxMedia[lightboxIndex].type === 'image' ? (
+                            <img src={lightboxMedia[lightboxIndex].url} alt="Lightbox Preview" className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" />
+                        ) : (
+                            <video src={lightboxMedia[lightboxIndex].url} controls autoPlay className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" />
+                        )}
+                    </div>
+                    
+                    {lightboxMedia.length > 1 && (
+                        <div className="absolute bottom-6 text-white/70 font-bold bg-black/50 px-4 py-2 rounded-full">
+                            {lightboxIndex + 1} / {lightboxMedia.length}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

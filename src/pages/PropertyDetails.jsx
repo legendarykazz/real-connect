@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import {
     ArrowLeft, Share2, Heart, Map, ImageIcon,
     CheckCircle2, FileText, ShieldCheck, Download, ExternalLink,
-    MessageCircle, Phone, Calendar as CalendarIcon, FileCheck, Mail
+    MessageCircle, Phone, Calendar as CalendarIcon, FileCheck, Mail,
+    ChevronLeft, ChevronRight, X
 } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -17,6 +18,8 @@ const PropertyDetails = () => {
     const [viewMode, setViewMode] = useState('gallery');
     const [isSaved, setIsSaved] = useState(false);
     const [activeImg, setActiveImg] = useState(0);
+    const [lightboxIndex, setLightboxIndex] = useState(-1); // -1 = closed; 0+ = open at index
+    const [lightboxMedia, setLightboxMedia] = useState([]); // Array of {url, type} mappings
 
     React.useEffect(() => {
         const fetchProperty = async () => {
@@ -60,6 +63,7 @@ const PropertyDetails = () => {
                     : `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Seller';
 
                 setProperty({
+                    // ... same mapping ...
                     id: data.id,
                     title: `${data.property_type} in ${data.location}`,
                     price: `₦${data.price}`,
@@ -95,6 +99,12 @@ const PropertyDetails = () => {
                         freeFromAcquisition: data.status === 'approved',
                     },
                 });
+
+                // Prepare Lightbox Media List (Images first, then videos)
+                const mediaItems = [];
+                allImages.forEach(url => mediaItems.push({ url, type: 'image' }));
+                (data.video_urls || []).filter(Boolean).forEach(url => mediaItems.push({ url, type: 'video' }));
+                setLightboxMedia(mediaItems);
             } catch (err) {
                 console.error('Error fetching property:', err);
                 setError('Could not load property details.');
@@ -137,8 +147,70 @@ const PropertyDetails = () => {
         }
     };
 
+    const openLightbox = (index) => {
+        setLightboxIndex(index);
+        document.body.style.overflow = 'hidden'; // Prevent background scroll
+    };
+
+    const closeLightbox = () => {
+        setLightboxIndex(-1);
+        document.body.style.overflow = '';
+    };
+
+    const nextMedia = () => {
+        setLightboxIndex((prev) => (prev + 1) % lightboxMedia.length);
+    };
+
+    const prevMedia = () => {
+        setLightboxIndex((prev) => (prev - 1 + lightboxMedia.length) % lightboxMedia.length);
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 pb-24 font-sans text-brand-dark">
+
+            {/* Lightbox Overlay */}
+            {lightboxIndex >= 0 && (
+                <div className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center animate-fade-in shadow-2xl backdrop-blur-sm">
+                    {/* Header: Close / Index Info */}
+                    <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center bg-gradient-to-b from-black/50 to-transparent">
+                        <span className="text-white/80 font-bold ml-4">{lightboxIndex + 1} / {lightboxMedia.length}</span>
+                        <button onClick={closeLightbox} className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all">
+                            <X className="w-8 h-8" />
+                        </button>
+                    </div>
+
+                    {/* Navigation Buttons */}
+                    <button onClick={prevMedia} className="absolute left-6 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all z-10 hidden sm:block">
+                        <ChevronLeft className="w-8 h-8" />
+                    </button>
+                    <button onClick={nextMedia} className="absolute right-6 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all z-10 hidden sm:block">
+                        <ChevronRight className="w-8 h-8" />
+                    </button>
+
+                    {/* Content Display */}
+                    <div className="w-full max-w-6xl max-h-[85vh] p-4 flex items-center justify-center">
+                        {lightboxMedia[lightboxIndex].type === 'image' ? (
+                            <img
+                                src={lightboxMedia[lightboxIndex].url}
+                                alt="Gallery item"
+                                className="max-w-full max-h-[85vh] object-contain select-none"
+                            />
+                        ) : (
+                            <video
+                                src={lightboxMedia[lightboxIndex].url}
+                                controls
+                                autoPlay
+                                className="max-w-full max-h-[85vh] object-contain"
+                            />
+                        )}
+                    </div>
+
+                    {/* Caption / Helper */}
+                    <div className="absolute bottom-10 text-white/50 text-sm">
+                        Use Arrow Keys to Navigate • Click X to Close
+                    </div>
+                </div>
+            )}
 
             {/* Top Bar */}
             <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -186,8 +258,11 @@ const PropertyDetails = () => {
                                         {property.images.length > 0 ? (
                                             <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[400px] md:h-[480px] rounded-2xl overflow-hidden shadow-sm">
                                                 {/* Main image */}
-                                                <div className="col-span-4 md:col-span-3 row-span-2 relative group cursor-pointer h-full">
+                                                <div className="col-span-4 md:col-span-3 row-span-2 relative group cursor-pointer h-full" onClick={() => openLightbox(activeImg)}>
                                                     <img src={property.images[activeImg]} alt="Main" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                                                        <span className="bg-white/90 text-brand-dark px-4 py-2 rounded-full font-bold opacity-0 group-hover:opacity-100 transition-opacity">Click to Expand</span>
+                                                    </div>
                                                 </div>
                                                 {/* Thumb 2 */}
                                                 {property.images.length > 1 && (
@@ -197,11 +272,11 @@ const PropertyDetails = () => {
                                                 )}
                                                 {/* Thumb 3 + count */}
                                                 {property.images.length > 2 ? (
-                                                    <div className="hidden md:block col-span-1 row-span-1 relative cursor-pointer h-full overflow-hidden group" onClick={() => setActiveImg(2)}>
+                                                    <div className="hidden md:block col-span-1 row-span-1 relative cursor-pointer h-full overflow-hidden group" onClick={() => openLightbox(2)}>
                                                         <img src={property.images[2]} alt="View 3" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                                                         {property.images.length > 3 && (
                                                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                                                <span className="text-white font-bold text-lg">+{property.images.length - 3} Photos</span>
+                                                                <span className="text-white font-bold text-lg">+{property.images.length - 2} Photos</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -323,8 +398,13 @@ const PropertyDetails = () => {
                                         <h2 className="text-xl font-bold mb-4">Property Videos</h2>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             {property.videoUrls.map((url, i) => (
-                                                <div key={i} className="rounded-xl overflow-hidden border border-gray-100 bg-black aspect-video">
-                                                    <video src={url} controls className="w-full h-full object-cover" />
+                                                <div key={i} className="rounded-xl overflow-hidden border border-gray-100 bg-black aspect-video relative group cursor-pointer">
+                                                    <video src={url} className="w-full h-full object-cover opacity-80" />
+                                                    <div onClick={() => openLightbox(property.images.length + i)} className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-all">
+                                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+                                                            <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[12px] border-l-brand-dark border-b-[8px] border-b-transparent ml-1"></div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>

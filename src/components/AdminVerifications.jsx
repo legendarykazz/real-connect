@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { CheckCircle2, XCircle, Search, Eye, Filter, ShieldCheck, FileText, Image as ImageIcon } from 'lucide-react';
+import { CheckCircle2, XCircle, Search, Eye, Filter, ShieldCheck, FileText, Image as ImageIcon, X, ZoomIn } from 'lucide-react';
 
 const AdminVerifications = () => {
     const [verifications, setVerifications] = useState([]);
@@ -11,6 +11,7 @@ const AdminVerifications = () => {
     const [rejectReason, setRejectReason] = useState('');
     const [secureUrls, setSecureUrls] = useState({ idDoc: null, addressDoc: null, selfie: null });
     const [loadingUrls, setLoadingUrls] = useState(false);
+    const [zoomedImage, setZoomedImage] = useState(null); // URL of the image to zoom
 
 
     const fetchVerifications = async () => {
@@ -278,26 +279,41 @@ const AdminVerifications = () => {
                             <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><FileText className="w-4 h-4" /> ID Document ({selectedRequest.id_type})</p>
-                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex items-center justify-center p-2 relative">
+                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.idDoc && setZoomedImage(secureUrls.idDoc)}>
                                         {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.idDoc ? (
-                                            <img src={secureUrls.idDoc} alt="ID Document" className="w-full h-full object-contain" />
+                                            <>
+                                                <img src={secureUrls.idDoc} alt="ID Document" className="w-full h-full object-contain" />
+                                                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                    <span className="bg-white/90 p-2 rounded-lg shadow-sm"><ZoomIn className="w-5 h-5 text-brand-dark" /></span>
+                                                </div>
+                                            </>
                                         ) : <p className="text-gray-400 text-sm">No image</p>}
                                     </div>
                                     <p className="text-xs text-center text-gray-500 font-mono bg-gray-100 p-1 rounded">No: {selectedRequest.id_number}</p>
                                 </div>
                                 <div className="space-y-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><ImageIcon className="w-4 h-4" /> Selfie (Liveness)</p>
-                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex items-center justify-center p-2 relative">
+                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.selfie && setZoomedImage(secureUrls.selfie)}>
                                         {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.selfie ? (
-                                            <img src={secureUrls.selfie} alt="Selfie" className="w-full h-full object-cover rounded-xl" />
+                                            <>
+                                                <img src={secureUrls.selfie} alt="Selfie" className="w-full h-full object-cover rounded-xl" />
+                                                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                    <span className="bg-white/90 p-2 rounded-lg shadow-sm"><ZoomIn className="w-5 h-5 text-brand-dark" /></span>
+                                                </div>
+                                            </>
                                         ) : <p className="text-gray-400 text-sm">No image</p>}
                                     </div>
                                 </div>
                                 <div className="space-y-2 sm:col-span-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><FileText className="w-4 h-4" /> Proof of Address</p>
-                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex items-center justify-center p-2 relative">
+                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.addressDoc && setZoomedImage(secureUrls.addressDoc)}>
                                         {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.addressDoc ? (
-                                            <img src={secureUrls.addressDoc} alt="Address Document" className="w-full h-full object-contain" />
+                                            <>
+                                                <img src={secureUrls.addressDoc} alt="Address Document" className="w-full h-full object-contain" />
+                                                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                    <span className="bg-white/90 p-2 rounded-lg shadow-sm"><ZoomIn className="w-5 h-5 text-brand-dark" /></span>
+                                                </div>
+                                            </>
                                         ) : <p className="text-gray-400 text-sm">No image</p>}
                                     </div>
                                 </div>
@@ -359,6 +375,21 @@ const AdminVerifications = () => {
                             </div>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Zoom Modal */}
+            {zoomedImage && (
+                <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 animate-fade-in" onClick={() => setZoomedImage(null)}>
+                    <div className="absolute top-6 right-6 text-white cursor-pointer hover:scale-110 transition-transform bg-white/10 p-2 rounded-full">
+                        <X className="w-8 h-8" />
+                    </div>
+                    <img 
+                        src={zoomedImage} 
+                        alt="Zoomed document" 
+                        className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" 
+                        onClick={(e) => e.stopPropagation()} 
+                    />
                 </div>
             )}
         </div>
