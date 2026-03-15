@@ -246,31 +246,30 @@ const ListProperty = () => {
 
     useEffect(() => {
         const checkVerification = async () => {
-            if (user) {
-                // Check if they are verified
-                const { data: profileData, error: profileErr } = await supabase
-                    .from('user_profiles')
-                    .select('is_verified')
-                    .eq('user_id', user.id)
-                    .single();
+            if (!user) return;
 
-                if (!profileErr && profileData) {
-                    setIsVerified(profileData.is_verified);
+            try {
+                // Check both tables to ensure we don't block users due to sync delays
+                const [profileRes, verifyRes] = await Promise.all([
+                    supabase.from('user_profiles').select('is_verified').eq('user_id', user.id).single(),
+                    supabase.from('user_verifications').select('status').eq('user_id', user.id).single()
+                ]);
+
+                const profileVerified = profileRes.data?.is_verified === true;
+                const verificationApproved = verifyRes.data?.status === 'approved';
+
+                // If approved in either table, they are good to go
+                if (profileVerified || verificationApproved) {
+                    setIsVerified(true);
                 } else {
                     setIsVerified(false);
+                    if (verifyRes.data?.status === 'pending') {
+                        setKycSuccess(true);
+                    }
                 }
-
-                // Check if they already have a pending verification request
-                const { data: verifyData } = await supabase
-                    .from('user_verifications')
-                    .select('status')
-                    .eq('user_id', user.id)
-                    .eq('status', 'pending')
-                    .single();
-
-                if (verifyData) {
-                    setKycSuccess(true); // Treat as success so they see the "under review" message
-                }
+            } catch (err) {
+                console.error('Verification check error:', err);
+                setIsVerified(false);
             }
         };
 
