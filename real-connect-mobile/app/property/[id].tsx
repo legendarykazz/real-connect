@@ -2,14 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { MapPin, Phone, Mail, ArrowLeft, Ruler, Calendar, Play } from 'lucide-react-native';
+import { MapPin, Phone, Mail, ArrowLeft, Ruler, Calendar, Play, ZoomIn } from 'lucide-react-native';
 import MapView, { Marker } from 'react-native-maps';
+import MediaLightbox from '../../components/MediaLightbox';
 
 export default function PropertyDetailsScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
     const [property, setProperty] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+
+    // Lightbox State
+    const [lightboxVisible, setLightboxVisible] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState(0);
+    const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: 'image' | 'video' }[]>([]);
 
     useEffect(() => {
         if (id) fetchPropertyDetails();
@@ -25,11 +31,33 @@ export default function PropertyDetailsScreen() {
 
             if (error) throw error;
             setProperty(data);
+            
+            // Prepare media for lightbox
+            const allMedia: { url: string; type: 'image' | 'video' }[] = [];
+            
+            // Add images
+            if (data.image_urls && data.image_urls.length > 0) {
+                data.image_urls.forEach((url: string) => allMedia.push({ url, type: 'image' }));
+            } else if (data.image_url) {
+                allMedia.push({ url: data.image_url, type: 'image' });
+            }
+            
+            // Add videos
+            if (data.video_urls && data.video_urls.length > 0) {
+                data.video_urls.forEach((url: string) => allMedia.push({ url, type: 'video' }));
+            }
+            
+            setLightboxMedia(allMedia);
         } catch (err) {
             console.error(err);
         } finally {
             setLoading(false);
         }
+    };
+
+    const openLightbox = (index: number) => {
+        setLightboxIndex(index);
+        setLightboxVisible(true);
     };
 
     if (loading) {
@@ -55,19 +83,26 @@ export default function PropertyDetailsScreen() {
         <View className="flex-1 bg-brand-light">
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
                 {/* Header Image */}
-                <View className="relative w-full h-80 bg-gray-200">
+                <TouchableOpacity 
+                    activeOpacity={0.9} 
+                    onPress={() => openLightbox(0)}
+                    className="relative w-full h-80 bg-gray-200"
+                >
                     <Image
                         source={{ uri: property.image_urls?.[0] || property.image_url || 'https://via.placeholder.com/800x600?text=No+Image' }}
                         className="w-full h-full"
                         resizeMode="cover"
                     />
+                    <View className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 hover:opacity-100">
+                        <ZoomIn color="white" size={32} opacity={0.6} />
+                    </View>
                     <TouchableOpacity
                         onPress={() => router.back()}
                         className="absolute top-12 left-4 bg-black/50 p-3 rounded-full"
                     >
                         <ArrowLeft color="white" size={24} />
                     </TouchableOpacity>
-                </View>
+                </TouchableOpacity>
 
                 <View className="p-6">
                     {/* Title & Price */}
@@ -142,7 +177,13 @@ export default function PropertyDetailsScreen() {
                             <Text className="text-lg font-bold text-brand-dark mb-3">Gallery ({property.image_urls.length})</Text>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
                                 {property.image_urls.map((url: string, index: number) => (
-                                    <Image key={index} source={{ uri: url }} className="w-32 h-32 rounded-xl mr-3 bg-gray-200" />
+                                    <TouchableOpacity 
+                                        key={index} 
+                                        onPress={() => openLightbox(index)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Image source={{ uri: url }} className="w-32 h-32 rounded-xl mr-3 bg-gray-200" />
+                                    </TouchableOpacity>
                                 ))}
                             </ScrollView>
                         </View>
@@ -153,24 +194,35 @@ export default function PropertyDetailsScreen() {
                         <View className="mb-8">
                             <Text className="text-lg font-bold text-brand-dark mb-3">Videos ({property.video_urls.length})</Text>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-                                {property.video_urls.map((url: string, index: number) => (
-                                    <TouchableOpacity
-                                        key={index}
-                                        onPress={() => Linking.openURL(url)}
-                                        className="w-48 h-32 rounded-xl mr-3 bg-black justify-center items-center"
-                                    >
-                                        <Play color="white" size={32} opacity={0.8} />
-                                        <Text className="text-white font-bold mt-2">Watch Video {index + 1}</Text>
-                                    </TouchableOpacity>
-                                ))}
+                                {property.video_urls.map((url: string, index: number) => {
+                                    const videoIndex = (property.image_urls?.length || (property.image_url ? 1 : 0)) + index;
+                                    return (
+                                        <TouchableOpacity
+                                            key={index}
+                                            onPress={() => openLightbox(videoIndex)}
+                                            className="w-48 h-32 rounded-xl mr-3 bg-black justify-center items-center"
+                                        >
+                                            <Play color="white" size={32} opacity={0.8} />
+                                            <Text className="text-white font-bold mt-2 text-center px-2">Watch Video {index + 1}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
                             </ScrollView>
                         </View>
                     )}
                 </View>
             </ScrollView>
 
+            {/* Lightbox Component */}
+            <MediaLightbox
+                visible={lightboxVisible}
+                onClose={() => setLightboxVisible(false)}
+                media={lightboxMedia}
+                initialIndex={lightboxIndex}
+            />
+
             {/* Bottom Action Bar */}
-            <View className="bg-white px-6 py-4 border-t border-gray-100 flex-row justify-between items-center shadow-lg pb-8">
+            <View className="bg-white px-6 py-4 border-t border-gray-100 flex-row justify-between items-center shadow-lg pb-10">
                 <TouchableOpacity
                     onPress={() => Linking.openURL(`tel:+2348123831634`)}
                     className="bg-brand-dark flex-row items-center justify-center flex-1 py-4 rounded-xl mr-3"
