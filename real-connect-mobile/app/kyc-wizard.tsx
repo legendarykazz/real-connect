@@ -62,31 +62,34 @@ export default function KYCWizard() {
 
         setLoading(true);
         try {
-            // Upload images
-            const idUrl = await uploadBase64Image(idImage, 'id_doc');
-            const addressUrl = await uploadBase64Image(addressImage, 'address_doc');
-            const selfieUrl = await uploadBase64Image(selfieImage, 'selfie');
+            // Upload all 3 images
+            const [idDocUrl, addressDocUrl, selfieDocUrl] = await Promise.all([
+                uploadBase64Image(idImage, 'id'),
+                uploadBase64Image(addressImage, 'address'),
+                uploadBase64Image(selfieImage, 'selfie')
+            ]);
 
-            const payload = {
-                user_id: user?.id,
-                full_name: fullName,
-                address: address,
-                email: user?.email,
-                phone: user?.user_metadata?.phone || '',
-                status: 'pending',
-                id_type: idType,
-                id_number: idNumber,
-                id_document_url: idUrl,
-                address_document_url: addressUrl,
-                selfie_url: selfieUrl,
-                rejection_reason: null
-            };
+            // Save to Database
+            const { error: dbError } = await supabase
+                .from('user_verifications')
+                .upsert({
+                    user_id: user?.id,
+                    full_name: fullName,
+                    address: address,
+                    email: user?.email,
+                    phone: user?.user_metadata?.phone || '',
+                    id_type: idType,
+                    id_number: idNumber,
+                    id_document_url: idDocUrl,
+                    address_document_url: addressDocUrl,
+                    selfie_url: selfieDocUrl,
+                    status: 'pending',
+                    rejection_reason: null
+                }, { onConflict: 'user_id' });
 
-            const { error: err } = await supabase.from('user_verifications').upsert(payload, { onConflict: 'user_id' });
-
-            if (err) {
+            if (dbError) {
                 // Check if it's the unique constraint violation for ID Number
-                if (err.message?.includes('user_verifications_id_number_key') || err.message?.includes('duplicate key') || err.code === '23505') {
+                if (dbError.message?.includes('user_verifications_id_number_key') || dbError.message?.includes('duplicate key') || dbError.code === '23505') {
                     throw new Error('This ID Number is already registered to another account.');
                 }
                 throw err;

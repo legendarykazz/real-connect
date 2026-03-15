@@ -296,7 +296,7 @@ const ListProperty = () => {
 
         try {
             // Upload all 3 documents
-            const [idUrl, addressUrl, selfieUrl] = await Promise.all([
+            const [idDocUrl, addressDocUrl, selfieDocUrl] = await Promise.all([
                 uploadKycFile(kycDoc, 'id'),
                 uploadKycFile(kycAddressDoc, 'address'),
                 uploadKycFile(kycSelfie, 'selfie')
@@ -313,9 +313,9 @@ const ListProperty = () => {
                     phone: user.user_metadata?.phone || '',
                     id_type: kycData.idType,
                     id_number: kycData.idNumber,
-                    id_document_url: idUrl,
-                    address_document_url: addressUrl,
-                    selfie_url: selfieUrl,
+                    id_document_url: idDocUrl,
+                    address_document_url: addressDocUrl,
+                    selfie_url: selfieDocUrl,
                     status: 'pending',
                     rejection_reason: null
                 }, { onConflict: 'user_id' });
