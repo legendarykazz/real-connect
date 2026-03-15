@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Camera, MapPin, CheckCircle2, ChevronRight, UploadCloud, Info, ShieldCheck, X, Image, Camera as CameraIcon, RefreshCw, Check, ZoomIn, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Camera, MapPin, CheckCircle2, ChevronRight, UploadCloud, Info, ShieldCheck, X, Image, Camera as CameraIcon, RefreshCw, Check, ZoomIn, ChevronLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
