@@ -78,12 +78,6 @@ const AdminVerifications = () => {
             
             if (error) {
                 console.error('[KYC Debug] Download Error:', error.message, 'for path:', path);
-                // Fallback: Try to get a public URL if download fails (bucket might be public)
-                const { data: publicData } = supabase.storage.from('kyc_documents').getPublicUrl(path);
-                if (publicData?.publicUrl) {
-                    console.log('[KYC Debug] Falling back to public URL');
-                    return { url: publicData.publicUrl, isBlob: false, rawPath: path };
-                }
                 return { url: null, isBlob: false, error: error.message, rawPath: path };
             }
             

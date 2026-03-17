@@ -27,7 +27,8 @@ CREATE POLICY "Users can view their own notifications"
 -- Users can update (mark as read) their own notifications
 CREATE POLICY "Users can update their own notifications"
   ON public.notifications FOR UPDATE
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 -- Admins can view/manage all notifications (optional, but good practice)
 CREATE POLICY "Admins can manage all notifications"
