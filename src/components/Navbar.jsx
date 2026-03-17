@@ -33,6 +33,7 @@ const Navbar = () => {
         }
 
         const fetchNotifications = async () => {
+            // 1. Fetch the latest 10 notifications for the dropdown
             const { data, error } = await supabase
                 .from('notifications')
                 .select('*')
@@ -42,23 +43,34 @@ const Navbar = () => {
 
             if (!error && data) {
                 setNotifications(data);
-                setUnreadCount(data.filter(n => !n.is_read).length);
+            }
+
+            // 2. Fetch the TRUE total count of unread notifications (not just the last 10)
+            const { count, error: countErr } = await supabase
+                .from('notifications')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id)
+                .or('is_read.eq.false,is_read.is.null'); // Handle both false and null for safety
+
+            if (!countErr) {
+                setUnreadCount(count || 0);
             }
         };
 
         fetchNotifications();
 
-        // Subscribe to real-time new notifications
+        // Subscribe to ALL changes (INSERT, UPDATE, DELETE) for this user's notifications
+        // This ensures that marking as read in one tab updates all other open tabs instantly.
         const channel = supabase
-            .channel(`public:notifications:user_id=eq.${user.id}`)
+            .channel(`notif_sync_${user.id}`)
             .on('postgres_changes', {
-                event: 'INSERT',
+                event: '*',
                 schema: 'public',
                 table: 'notifications',
                 filter: `user_id=eq.${user.id}`
-            }, (payload) => {
-                setNotifications(prev => [payload.new, ...prev].slice(0, 10));
-                setUnreadCount(prev => prev + 1);
+            }, () => {
+                // On any change, just refresh the data to stay in sync
+                fetchNotifications();
             })
             .subscribe();
 
@@ -87,7 +99,7 @@ const Navbar = () => {
             .from('notifications')
             .update({ is_read: true })
             .eq('user_id', user?.id)
-            .neq('is_read', true);
+            .or('is_read.eq.false,is_read.is.null');
     };
 
     const handleLogout = async () => {
