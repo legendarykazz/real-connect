@@ -4,8 +4,8 @@
 -- This ensures that any authenticated user (like the Admin) can view the images.
 -- ==============================================================================
 
--- 1. Ensure the bucket is private (if not already)
-UPDATE storage.buckets SET public = false WHERE id = 'kyc_documents';
+-- 1. Make the bucket PUBLIC (fixes most browser/CORS access issues)
+UPDATE storage.buckets SET public = true WHERE id = 'kyc_documents';
 
 -- 2. Add an "Admins and Authenticated" policy for SELECT
 DROP POLICY IF EXISTS "Allow authenticated Select" ON storage.objects;

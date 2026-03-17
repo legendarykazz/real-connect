@@ -87,12 +87,17 @@ const AdminVerifications = () => {
                     details: error.details,
                     code: error.code
                 };
+
+                // NEW: Get a public URL as fallback info
+                const { data: publicData } = supabase.storage.from('kyc_documents').getPublicUrl(path);
+
                 return { 
-                    url: null, 
+                    url: publicData?.publicUrl || null, 
                     isBlob: false, 
-                    error: `${error.message || 'Access Denied'} (code: ${error.code || status || '403'})`, 
+                    error: `${error.message || 'Access Denied (CORS/RLS)'} (code: ${error.code || status || '403'})`, 
                     rawError: JSON.stringify(detailedError),
-                    rawPath: path 
+                    rawPath: path,
+                    publicUrl: publicData?.publicUrl
                 };
             }
             
@@ -376,15 +381,28 @@ const AdminVerifications = () => {
                                             <div className="text-center p-4 bg-red-50 w-full h-full flex flex-col justify-center rounded-xl">
                                                 <XCircle className="w-6 h-6 text-red-500 mx-auto mb-2" />
                                                 <p className="text-xs text-red-700 font-bold mb-1">Load Failed</p>
-                                                <div className="max-h-20 overflow-y-auto px-2">
-                                                    <p className="text-[10px] text-red-600 mb-1 leading-tight">{urlErrors.idDoc || 'Unknown error'}</p>
+                                                <div className="max-h-20 overflow-y-auto px-2 mb-2">
+                                                    <p className="text-[10px] text-red-600 mb-1 leading-tight">{urlErrors.idDoc || 'Access Denied'}</p>
                                                     {secureUrls.idDoc?.rawError && secureUrls.idDoc.rawError !== '{}' && (
                                                         <p className="text-[8px] text-red-400 font-mono break-all">{secureUrls.idDoc.rawError}</p>
                                                     )}
                                                 </div>
-                                                <div className="mt-2 pt-2 border-t border-red-100">
-                                                    <p className="text-[8px] text-gray-400 uppercase font-bold">Extracted Path:</p>
-                                                    <p className="text-[9px] text-gray-500 break-all">{secureUrls.idDoc?.rawPath || 'None'}</p>
+                                                <div className="flex flex-col gap-2 w-full px-4">
+                                                    {secureUrls.idDoc?.publicUrl && (
+                                                        <a 
+                                                            href={secureUrls.idDoc.publicUrl} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="text-[10px] bg-white border border-red-200 py-1 px-2 rounded-md font-bold text-red-600 hover:bg-red-50 text-center flex items-center justify-center gap-1"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <ExternalLink className="w-3 h-3" /> Open Direct Link
+                                                        </a>
+                                                    )}
+                                                    <div className="pt-2 border-t border-red-100">
+                                                        <p className="text-[8px] text-gray-400 uppercase font-bold">Extracted Path:</p>
+                                                        <p className="text-[9px] text-gray-500 break-all">{secureUrls.idDoc?.rawPath || 'None'}</p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
