@@ -102,11 +102,7 @@ const Navbar = () => {
     const [isMarkingAll, setIsMarkingAll] = useState(false);
 
     const handleMarkAllAsRead = async () => {
-        alert('Mark All Click Triggered!');
-        console.log('[Notification Debug] handleMarkAllAsRead STARTED', { unreadCount, isMarkingAll, userId: user?.id });
-        
         if (unreadCount === 0 || isMarkingAll) {
-            console.log('[Notification Debug] Aborting: count is 0 or already marking');
             return;
         }
 
@@ -188,20 +184,19 @@ const Navbar = () => {
                                         <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50">
                                             <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
                                                 <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                                                    Notifications <span className="text-[10px] bg-brand-green/20 text-brand-green px-1 rounded">V2-DEBUG</span>
+                                                    Notifications
                                                 </h3>
                                                 {unreadCount > 0 && (
                                                     <button 
                                                         onClick={(e) => {
-                                                            console.log('Button DOM Clicked');
                                                             e.preventDefault();
                                                             e.stopPropagation();
                                                             handleMarkAllAsRead();
                                                         }} 
                                                         disabled={isMarkingAll}
-                                                        className={`text-xs font-bold px-3 py-1.5 rounded-lg border-2 border-brand-green transition-all cursor-pointer z-[100] active:scale-95 ${isMarkingAll ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-brand-green hover:bg-brand-green hover:text-white shadow-sm'}`}
+                                                        className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer z-[100] active:scale-95 ${isMarkingAll ? 'text-gray-400' : 'text-brand-green hover:bg-brand-green/10 hover:underline'}`}
                                                     >
-                                                        {isMarkingAll ? '...' : 'Mark all as read'}
+                                                        {isMarkingAll ? 'Marking...' : 'Mark all as read'}
                                                     </button>
                                                 )}
                                             </div>
@@ -289,7 +284,17 @@ const Navbar = () => {
                         <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
                             <h3 className="font-bold text-gray-800">Notifications</h3>
                             {unreadCount > 0 && (
-                                <button onClick={handleMarkAllAsRead} className="text-xs text-brand-green font-medium">Mark all as read</button>
+                                <button 
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleMarkAllAsRead();
+                                    }} 
+                                    disabled={isMarkingAll}
+                                    className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${isMarkingAll ? 'text-gray-400' : 'text-brand-green hover:bg-brand-green/10'}`}
+                                >
+                                    {isMarkingAll ? 'Marking...' : 'Mark all as read'}
+                                </button>
                             )}
                         </div>
                         <div className="max-h-80 overflow-y-auto">
