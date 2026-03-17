@@ -13,6 +13,16 @@ const Navbar = () => {
     const navigate = useNavigate();
     const notifRef = useRef(null);
 
+    // Global debug export
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            window.forceMarkAllReads = () => {
+                console.log('Manual call to handleMarkAllAsRead');
+                handleMarkAllAsRead();
+            };
+        }
+    }, [unreadCount, user]);
+
     // Close notifications click outside
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -92,8 +102,13 @@ const Navbar = () => {
     const [isMarkingAll, setIsMarkingAll] = useState(false);
 
     const handleMarkAllAsRead = async () => {
-        console.log('[Notification Debug] Mark All Clicked, current count:', unreadCount);
-        if (unreadCount === 0 || isMarkingAll) return;
+        alert('Mark All Click Triggered!');
+        console.log('[Notification Debug] handleMarkAllAsRead STARTED', { unreadCount, isMarkingAll, userId: user?.id });
+        
+        if (unreadCount === 0 || isMarkingAll) {
+            console.log('[Notification Debug] Aborting: count is 0 or already marking');
+            return;
+        }
 
         setIsMarkingAll(true);
         // Optimistic update
@@ -172,18 +187,21 @@ const Navbar = () => {
                                     {isNotificationsOpen && (
                                         <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50">
                                             <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
-                                                <h3 className="font-bold text-gray-800">Notifications</h3>
+                                                <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                                                    Notifications <span className="text-[10px] bg-brand-green/20 text-brand-green px-1 rounded">V2-DEBUG</span>
+                                                </h3>
                                                 {unreadCount > 0 && (
                                                     <button 
                                                         onClick={(e) => {
+                                                            console.log('Button DOM Clicked');
                                                             e.preventDefault();
                                                             e.stopPropagation();
                                                             handleMarkAllAsRead();
                                                         }} 
                                                         disabled={isMarkingAll}
-                                                        className={`text-xs font-medium px-2 py-1 rounded-md transition-all ${isMarkingAll ? 'text-gray-400' : 'text-brand-green hover:bg-brand-green/10 hover:underline'}`}
+                                                        className={`text-xs font-bold px-3 py-1.5 rounded-lg border-2 border-brand-green transition-all cursor-pointer z-[100] active:scale-95 ${isMarkingAll ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-brand-green hover:bg-brand-green hover:text-white shadow-sm'}`}
                                                     >
-                                                        {isMarkingAll ? 'Marking...' : 'Mark all as read'}
+                                                        {isMarkingAll ? '...' : 'Mark all as read'}
                                                     </button>
                                                 )}
                                             </div>
