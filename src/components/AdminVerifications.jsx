@@ -74,11 +74,17 @@ const AdminVerifications = () => {
         
         try {
             // Use download instead of createSignedUrl for better reliability with RLS
-            const { data, error } = await supabase.storage.from('kyc_documents').download(path);
+            const { data, error, status } = await supabase.storage.from('kyc_documents').download(path);
             
             if (error) {
-                console.error('[KYC Debug] Download Error:', error.message, 'for path:', path);
-                return { url: null, isBlob: false, error: error.message, rawPath: path };
+                console.error('[KYC Debug] Download Error:', error, 'Status:', status);
+                return { 
+                    url: null, 
+                    isBlob: false, 
+                    error: `${error.message || 'Unknown Error'} (Status: ${status || 'N/A'})`, 
+                    rawError: JSON.stringify(error),
+                    rawPath: path 
+                };
             }
             
             const blobUrl = URL.createObjectURL(data);
@@ -86,7 +92,13 @@ const AdminVerifications = () => {
             return { url: blobUrl, isBlob: true, rawPath: path };
         } catch (err) {
             console.error('[KYC Debug] Exception in getSecureUrl:', err);
-            return { url: urlOrPath.startsWith('http') ? urlOrPath : null, isBlob: false, error: err.message, rawPath: path };
+            return { 
+                url: urlOrPath.startsWith('http') ? urlOrPath : null, 
+                isBlob: false, 
+                error: err.message || 'Exception caught', 
+                rawError: JSON.stringify(err),
+                rawPath: path 
+            };
         }
     };
 
@@ -355,7 +367,12 @@ const AdminVerifications = () => {
                                             <div className="text-center p-4 bg-red-50 w-full h-full flex flex-col justify-center rounded-xl">
                                                 <XCircle className="w-6 h-6 text-red-500 mx-auto mb-2" />
                                                 <p className="text-xs text-red-700 font-bold mb-1">Load Failed</p>
-                                                <p className="text-[10px] text-red-600 mb-2 truncate px-2">{urlErrors.idDoc || 'Unknown connectivity issue'}</p>
+                                                <div className="max-h-20 overflow-y-auto px-2">
+                                                    <p className="text-[10px] text-red-600 mb-1 leading-tight">{urlErrors.idDoc || 'Unknown error'}</p>
+                                                    {secureUrls.idDoc?.rawError && secureUrls.idDoc.rawError !== '{}' && (
+                                                        <p className="text-[8px] text-red-400 font-mono break-all">{secureUrls.idDoc.rawError}</p>
+                                                    )}
+                                                </div>
                                                 <div className="mt-2 pt-2 border-t border-red-100">
                                                     <p className="text-[8px] text-gray-400 uppercase font-bold">Extracted Path:</p>
                                                     <p className="text-[9px] text-gray-500 break-all">{secureUrls.idDoc?.rawPath || 'None'}</p>

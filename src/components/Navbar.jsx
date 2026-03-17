@@ -95,11 +95,18 @@ const Navbar = () => {
         setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
         setUnreadCount(0);
 
-        await supabase
+        const { error } = await supabase
             .from('notifications')
             .update({ is_read: true })
             .eq('user_id', user?.id)
             .or('is_read.eq.false,is_read.is.null');
+
+        if (error) {
+            console.error('[Notification Debug] Update Error:', error);
+            alert('Failed to mark all as read. Check console or RLS.');
+            // Revert optimistic update
+            fetchNotifications();
+        }
     };
 
     const handleLogout = async () => {
