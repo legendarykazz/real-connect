@@ -89,23 +89,34 @@ const Navbar = () => {
             .eq('user_id', user?.id);
     };
 
-    const handleMarkAllAsRead = async () => {
-        if (unreadCount === 0) return;
+    const [isMarkingAll, setIsMarkingAll] = useState(false);
 
+    const handleMarkAllAsRead = async () => {
+        console.log('[Notification Debug] Mark All Clicked, current count:', unreadCount);
+        if (unreadCount === 0 || isMarkingAll) return;
+
+        setIsMarkingAll(true);
+        // Optimistic update
         setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
         setUnreadCount(0);
 
-        const { error } = await supabase
-            .from('notifications')
-            .update({ is_read: true })
-            .eq('user_id', user?.id)
-            .or('is_read.eq.false,is_read.is.null');
+        try {
+            const { error } = await supabase
+                .from('notifications')
+                .update({ is_read: true })
+                .eq('user_id', user?.id)
+                .or('is_read.eq.false,is_read.is.null');
 
-        if (error) {
-            console.error('[Notification Debug] Update Error:', error);
-            alert('Failed to mark all as read. Check console or RLS.');
-            // Revert optimistic update
-            fetchNotifications();
+            if (error) {
+                console.error('[Notification Debug] Update Error:', error);
+                alert('Failed to mark all as read. Check console or RLS.');
+                // Revert optimistic update
+                fetchNotifications();
+            }
+        } catch (err) {
+            console.error('[Notification Debug] Exception:', err);
+        } finally {
+            setIsMarkingAll(false);
         }
     };
 
@@ -163,8 +174,16 @@ const Navbar = () => {
                                             <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
                                                 <h3 className="font-bold text-gray-800">Notifications</h3>
                                                 {unreadCount > 0 && (
-                                                    <button onClick={handleMarkAllAsRead} className="text-xs text-brand-green font-medium hover:underline">
-                                                        Mark all as read
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            handleMarkAllAsRead();
+                                                        }} 
+                                                        disabled={isMarkingAll}
+                                                        className={`text-xs font-medium px-2 py-1 rounded-md transition-all ${isMarkingAll ? 'text-gray-400' : 'text-brand-green hover:bg-brand-green/10 hover:underline'}`}
+                                                    >
+                                                        {isMarkingAll ? 'Marking...' : 'Mark all as read'}
                                                     </button>
                                                 )}
                                             </div>
