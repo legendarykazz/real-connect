@@ -56,45 +56,57 @@ const AdminVerifications = () => {
 
     const getSecureUrl = async (urlOrPath) => {
         if (!urlOrPath) return null;
-        console.log('[KYC Debug] Processing URL/Path:', urlOrPath);
+        console.log('[KYC Debug] Processing URL/Path for download:', urlOrPath);
         
-        // Handle full Supabase URLs
         let path = urlOrPath;
         if (urlOrPath.includes('/storage/v1/object/')) {
-            // Extracts everything after the bucket name
-            // Format: .../object/public/bucket_name/path/to/file
             const match = urlOrPath.match(/\/object\/(?:public|authenticated)\/([^\/]+)\/(.+)$/);
             if (match) {
-                const bucket = match[1];
                 path = match[2];
-                console.log(`[KYC Debug] Extracted bucket: ${bucket}, path: ${path}`);
             }
         } else if (urlOrPath.includes('kyc_documents/')) {
             const parts = urlOrPath.split('kyc_documents/');
             path = parts[parts.length - 1];
         }
         
-        // Clean up path
         path = path.split('?')[0].replace(/^\/+/, '');
-        console.log('[KYC Debug] Final path for signed URL:', path);
+        console.log('[KYC Debug] Target path for download:', path);
         
         try {
-            const { data, error } = await supabase.storage.from('kyc_documents').createSignedUrl(path, 60 * 60);
+            // Use download instead of createSignedUrl for better reliability with RLS
+            const { data, error } = await supabase.storage.from('kyc_documents').download(path);
+            
             if (error) {
-                console.error('[KYC Debug] Signed URL Error:', error.message, 'for path:', path);
-                // Fallback for public buckets or if signed URL fails but URL is public
-                if (urlOrPath.startsWith('http')) return urlOrPath;
-                return null;
+                console.error('[KYC Debug] Download Error:', error.message, 'for path:', path);
+                // Fallback to public URL if available and download fails
+                if (urlOrPath.startsWith('http')) return { url: urlOrPath, isBlob: false };
+                throw error;
             }
-            console.log('[KYC Debug] Successfully generated signed URL');
-            return data.signedUrl;
+            
+            const blobUrl = URL.createObjectURL(data);
+            console.log('[KYC Debug] Successfully downloaded and created blob URL');
+            return { url: blobUrl, isBlob: true };
         } catch (err) {
             console.error('[KYC Debug] Exception in getSecureUrl:', err);
-            return urlOrPath.startsWith('http') ? urlOrPath : null;
+            return urlOrPath.startsWith('http') ? { url: urlOrPath, isBlob: false } : null;
         }
     };
 
+    // Cleanup blob URLs to prevent memory leaks
+    useEffect(() => {
+        return () => {
+            [secureUrls.idDoc, secureUrls.addressDoc, secureUrls.selfie]
+                .filter(item => item && item.isBlob)
+                .forEach(item => URL.revokeObjectURL(item.url));
+        };
+    }, [secureUrls]);
+
     const handleSelectRequest = async (req) => {
+        // Cleanup old blobs before selecting new one
+        [secureUrls.idDoc, secureUrls.addressDoc, secureUrls.selfie]
+            .filter(item => item && item.isBlob)
+            .forEach(item => URL.revokeObjectURL(item.url));
+
         setSelectedRequest(req);
         setLoadingUrls(true);
         setSecureUrls({ idDoc: null, addressDoc: null, selfie: null });
@@ -107,8 +119,7 @@ const AdminVerifications = () => {
         ]);
 
         const [idDoc, addressDoc, selfie] = results.map(r => r.status === 'fulfilled' ? r.value : null);
-        const errors = results.map(r => r.status === 'rejected' ? r.reason : null);
-
+        
         setSecureUrls({ idDoc, addressDoc, selfie });
         setLoadingUrls(false);
     };
@@ -295,7 +306,14 @@ const AdminVerifications = () => {
                                 </h3>
                                 <p className="text-sm text-gray-500 mt-1">Reviewing submission for {selectedRequest.full_name}</p>
                             </div>
-                            <button onClick={() => { setSelectedRequest(null); setRejectReason(''); }} className="p-2 text-gray-400 hover:text-brand-dark bg-gray-100 rounded-full">
+                            <button onClick={() => { 
+                                // Cleanup blobs on close
+                                [secureUrls.idDoc, secureUrls.addressDoc, secureUrls.selfie]
+                                    .filter(item => item && item.isBlob)
+                                    .forEach(item => URL.revokeObjectURL(item.url));
+                                setSelectedRequest(null); 
+                                setRejectReason(''); 
+                            }} className="p-2 text-gray-400 hover:text-brand-dark bg-gray-100 rounded-full">
                                 <XCircle className="w-6 h-6" />
                             </button>
                         </div>
@@ -305,11 +323,11 @@ const AdminVerifications = () => {
                             <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><FileText className="w-4 h-4" /> ID Document ({selectedRequest.id_type})</p>
-                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.idDoc && setZoomedImage(secureUrls.idDoc)}>
+                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.idDoc && setZoomedImage(secureUrls.idDoc.url)}>
                                         {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.idDoc ? (
                                             <>
                                                 <img 
-                                                    src={secureUrls.idDoc} 
+                                                    src={secureUrls.idDoc.url} 
                                                     alt="ID Document" 
                                                     className="w-full h-full object-contain" 
                                                     onError={(e) => {
@@ -321,7 +339,7 @@ const AdminVerifications = () => {
                                                 <div className="hidden text-center p-4">
                                                     <XCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
                                                     <p className="text-xs text-red-500 font-medium">Image failed to load (Check console for 403/404)</p>
-                                                    <p className="text-[10px] text-gray-400 break-all mt-1">{secureUrls.idDoc.substring(0, 100)}...</p>
+                                                    <p className="text-[10px] text-gray-400 break-all mt-1">{secureUrls.idDoc.url.substring(0, 100)}...</p>
                                                 </div>
                                                 <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                     <span className="bg-white/90 p-2 rounded-lg shadow-sm"><ZoomIn className="w-5 h-5 text-brand-dark" /></span>
@@ -338,11 +356,11 @@ const AdminVerifications = () => {
                                 </div>
                                 <div className="space-y-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><ImageIcon className="w-4 h-4" /> Selfie (Liveness)</p>
-                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.selfie && setZoomedImage(secureUrls.selfie)}>
+                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.selfie && setZoomedImage(secureUrls.selfie.url)}>
                                         {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.selfie ? (
                                             <>
                                                 <img 
-                                                    src={secureUrls.selfie} 
+                                                    src={secureUrls.selfie.url} 
                                                     alt="Selfie" 
                                                     className="w-full h-full object-cover rounded-xl" 
                                                     onError={(e) => {
@@ -369,11 +387,11 @@ const AdminVerifications = () => {
                                 </div>
                                 <div className="space-y-2 sm:col-span-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><FileText className="w-4 h-4" /> Proof of Address</p>
-                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.addressDoc && setZoomedImage(secureUrls.addressDoc)}>
+                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.addressDoc && setZoomedImage(secureUrls.addressDoc.url)}>
                                         {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.addressDoc ? (
                                             <>
                                                 <img 
-                                                    src={secureUrls.addressDoc} 
+                                                    src={secureUrls.addressDoc.url} 
                                                     alt="Address Document" 
                                                     className="w-full h-full object-contain" 
                                                     onError={(e) => {
