@@ -11,6 +11,7 @@ const AdminVerifications = () => {
     const [rejectReason, setRejectReason] = useState('');
     const [secureUrls, setSecureUrls] = useState({ idDoc: null, addressDoc: null, selfie: null });
     const [loadingUrls, setLoadingUrls] = useState(false);
+    const [urlErrors, setUrlErrors] = useState({ idDoc: null, addressDoc: null, selfie: null });
     const [zoomedImage, setZoomedImage] = useState(null); // URL of the image to zoom
 
 
@@ -55,29 +56,40 @@ const AdminVerifications = () => {
 
     const getSecureUrl = async (urlOrPath) => {
         if (!urlOrPath) return null;
-        let path = urlOrPath;
+        console.log('[KYC Debug] Processing URL/Path:', urlOrPath);
         
-        // Logic to extract path from full Supabase URLs
-        // Format: https://[project].supabase.co/storage/v1/object/public/kyc_documents/[path]
-        if (urlOrPath.includes('kyc_documents/')) {
+        // Handle full Supabase URLs
+        let path = urlOrPath;
+        if (urlOrPath.includes('/storage/v1/object/')) {
+            // Extracts everything after the bucket name
+            // Format: .../object/public/bucket_name/path/to/file
+            const match = urlOrPath.match(/\/object\/(?:public|authenticated)\/([^\/]+)\/(.+)$/);
+            if (match) {
+                const bucket = match[1];
+                path = match[2];
+                console.log(`[KYC Debug] Extracted bucket: ${bucket}, path: ${path}`);
+            }
+        } else if (urlOrPath.includes('kyc_documents/')) {
             const parts = urlOrPath.split('kyc_documents/');
-            path = parts[parts.length - 1]; // Get everything after 'kyc_documents/'
+            path = parts[parts.length - 1];
         }
         
-        // Clean up path - remove leading slashes or query parameters
+        // Clean up path
         path = path.split('?')[0].replace(/^\/+/, '');
+        console.log('[KYC Debug] Final path for signed URL:', path);
         
         try {
-            const { data, error } = await supabase.storage.from('kyc_documents').createSignedUrl(path, 60 * 60); // 1 hour
+            const { data, error } = await supabase.storage.from('kyc_documents').createSignedUrl(path, 60 * 60);
             if (error) {
-                console.error('Error generating signed URL for path:', path, error);
-                // Fallback: If it's already a public URL and signed URL fails, try returning it as is
+                console.error('[KYC Debug] Signed URL Error:', error.message, 'for path:', path);
+                // Fallback for public buckets or if signed URL fails but URL is public
                 if (urlOrPath.startsWith('http')) return urlOrPath;
                 return null;
             }
+            console.log('[KYC Debug] Successfully generated signed URL');
             return data.signedUrl;
         } catch (err) {
-            console.error('Catch error generating signed URL:', err);
+            console.error('[KYC Debug] Exception in getSecureUrl:', err);
             return urlOrPath.startsWith('http') ? urlOrPath : null;
         }
     };
@@ -86,12 +98,16 @@ const AdminVerifications = () => {
         setSelectedRequest(req);
         setLoadingUrls(true);
         setSecureUrls({ idDoc: null, addressDoc: null, selfie: null });
+        setUrlErrors({ idDoc: null, addressDoc: null, selfie: null });
 
-        const [idDoc, addressDoc, selfie] = await Promise.all([
+        const results = await Promise.allSettled([
             getSecureUrl(req.id_document_url),
             getSecureUrl(req.address_document_url),
             getSecureUrl(req.selfie_url)
         ]);
+
+        const [idDoc, addressDoc, selfie] = results.map(r => r.status === 'fulfilled' ? r.value : null);
+        const errors = results.map(r => r.status === 'rejected' ? r.reason : null);
 
         setSecureUrls({ idDoc, addressDoc, selfie });
         setLoadingUrls(false);
@@ -289,42 +305,97 @@ const AdminVerifications = () => {
                             <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><FileText className="w-4 h-4" /> ID Document ({selectedRequest.id_type})</p>
-                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.idDoc && setZoomedImage(secureUrls.idDoc)}>
+                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.idDoc && setZoomedImage(secureUrls.idDoc)}>
                                         {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.idDoc ? (
                                             <>
-                                                <img src={secureUrls.idDoc} alt="ID Document" className="w-full h-full object-contain" />
+                                                <img 
+                                                    src={secureUrls.idDoc} 
+                                                    alt="ID Document" 
+                                                    className="w-full h-full object-contain" 
+                                                    onError={(e) => {
+                                                        console.error('[KYC Debug] ID Img Load Error');
+                                                        e.target.style.display = 'none';
+                                                        e.target.nextSibling.style.display = 'block';
+                                                    }}
+                                                />
+                                                <div className="hidden text-center p-4">
+                                                    <XCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+                                                    <p className="text-xs text-red-500 font-medium">Image failed to load (Check console for 403/404)</p>
+                                                    <p className="text-[10px] text-gray-400 break-all mt-1">{secureUrls.idDoc.substring(0, 100)}...</p>
+                                                </div>
                                                 <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                     <span className="bg-white/90 p-2 rounded-lg shadow-sm"><ZoomIn className="w-5 h-5 text-brand-dark" /></span>
                                                 </div>
                                             </>
-                                        ) : <p className="text-gray-400 text-sm">No image</p>}
+                                        ) : (
+                                            <div className="text-center">
+                                                <ImageIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                                                <p className="text-gray-400 text-sm">No image or URL invalid</p>
+                                            </div>
+                                        )}
                                     </div>
                                     <p className="text-xs text-center text-gray-500 font-mono bg-gray-100 p-1 rounded">No: {selectedRequest.id_number}</p>
                                 </div>
                                 <div className="space-y-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><ImageIcon className="w-4 h-4" /> Selfie (Liveness)</p>
-                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.selfie && setZoomedImage(secureUrls.selfie)}>
+                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.selfie && setZoomedImage(secureUrls.selfie)}>
                                         {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.selfie ? (
                                             <>
-                                                <img src={secureUrls.selfie} alt="Selfie" className="w-full h-full object-cover rounded-xl" />
+                                                <img 
+                                                    src={secureUrls.selfie} 
+                                                    alt="Selfie" 
+                                                    className="w-full h-full object-cover rounded-xl" 
+                                                    onError={(e) => {
+                                                        console.error('[KYC Debug] Selfie Img Load Error');
+                                                        e.target.style.display = 'none';
+                                                        e.target.nextSibling.style.display = 'block';
+                                                    }}
+                                                />
+                                                <div className="hidden text-center p-4">
+                                                    <XCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+                                                    <p className="text-xs text-red-500 font-medium">Image failed to load</p>
+                                                </div>
                                                 <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                     <span className="bg-white/90 p-2 rounded-lg shadow-sm"><ZoomIn className="w-5 h-5 text-brand-dark" /></span>
                                                 </div>
                                             </>
-                                        ) : <p className="text-gray-400 text-sm">No image</p>}
+                                        ) : (
+                                            <div className="text-center">
+                                                <ImageIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                                                <p className="text-gray-400 text-sm">No image</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="space-y-2 sm:col-span-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><FileText className="w-4 h-4" /> Proof of Address</p>
-                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.addressDoc && setZoomedImage(secureUrls.addressDoc)}>
+                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.addressDoc && setZoomedImage(secureUrls.addressDoc)}>
                                         {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.addressDoc ? (
                                             <>
-                                                <img src={secureUrls.addressDoc} alt="Address Document" className="w-full h-full object-contain" />
+                                                <img 
+                                                    src={secureUrls.addressDoc} 
+                                                    alt="Address Document" 
+                                                    className="w-full h-full object-contain" 
+                                                    onError={(e) => {
+                                                        console.error('[KYC Debug] Address Img Load Error');
+                                                        e.target.style.display = 'none';
+                                                        e.target.nextSibling.style.display = 'block';
+                                                    }}
+                                                />
+                                                <div className="hidden text-center p-4">
+                                                    <XCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+                                                    <p className="text-xs text-red-500 font-medium">Image failed to load</p>
+                                                </div>
                                                 <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                     <span className="bg-white/90 p-2 rounded-lg shadow-sm"><ZoomIn className="w-5 h-5 text-brand-dark" /></span>
                                                 </div>
                                             </>
-                                        ) : <p className="text-gray-400 text-sm">No image</p>}
+                                        ) : (
+                                            <div className="text-center">
+                                                <ImageIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                                                <p className="text-gray-400 text-sm">No image</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
