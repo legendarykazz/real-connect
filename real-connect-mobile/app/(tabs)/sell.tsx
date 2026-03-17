@@ -30,6 +30,7 @@ export default function SellScreen() {
     const [lngText, setLngText] = useState('');
     const [loading, setLoading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState('');
+    const [phone, setPhone] = useState(user?.user_metadata?.phone || '');
 
     // KYC Verification State
     const [verifStatus, setVerifStatus] = useState<string | null>(null);
@@ -185,7 +186,7 @@ export default function SellScreen() {
                 first_name: user?.user_metadata?.first_name || 'User',
                 last_name: user?.user_metadata?.last_name || '',
                 email: user?.email || '',
-                phone: user?.user_metadata?.phone || '',
+                phone: phone,
                 location,
                 size,
                 price: parseFloat(price.replace(/,/g, '')),
@@ -462,6 +463,9 @@ export default function SellScreen() {
 
                     <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">Price (₦) *</Text>
                     <TextInput className="bg-white rounded-xl px-4 py-4 mb-4 border border-gray-100 text-brand-dark font-medium shadow-sm" placeholder="e.g. 20000000" placeholderTextColor="#9ca3af" keyboardType="numeric" value={price} onChangeText={setPrice} />
+
+                    <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">Contact Phone Number *</Text>
+                    <TextInput className="bg-white rounded-xl px-4 py-4 mb-4 border border-gray-100 text-brand-dark font-medium shadow-sm" placeholder="e.g. 08012345678" placeholderTextColor="#9ca3af" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
 
                     <Text className="text-sm font-bold text-gray-700 mb-1 ml-1">Description</Text>
                     <TextInput

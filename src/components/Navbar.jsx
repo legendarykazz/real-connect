@@ -87,7 +87,7 @@ const Navbar = () => {
             .from('notifications')
             .update({ is_read: true })
             .eq('user_id', user?.id)
-            .eq('is_read', false);
+            .neq('is_read', true);
     };
 
     const handleLogout = async () => {

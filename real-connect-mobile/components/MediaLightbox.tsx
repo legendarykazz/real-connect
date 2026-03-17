@@ -26,6 +26,13 @@ export default function MediaLightbox({ visible, onClose, media, initialIndex }:
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [loading, setLoading] = useState(true);
 
+    React.useEffect(() => {
+        if (visible) {
+            setCurrentIndex(initialIndex);
+            setLoading(true);
+        }
+    }, [visible, initialIndex]);
+
     if (!media || media.length === 0) return null;
 
     const currentMedia = media[currentIndex];

@@ -56,19 +56,29 @@ const AdminVerifications = () => {
     const getSecureUrl = async (urlOrPath) => {
         if (!urlOrPath) return null;
         let path = urlOrPath;
-        if (urlOrPath.includes('/kyc_documents/')) {
-            path = urlOrPath.split('/kyc_documents/')[1];
+        
+        // Logic to extract path from full Supabase URLs
+        // Format: https://[project].supabase.co/storage/v1/object/public/kyc_documents/[path]
+        if (urlOrPath.includes('kyc_documents/')) {
+            const parts = urlOrPath.split('kyc_documents/');
+            path = parts[parts.length - 1]; // Get everything after 'kyc_documents/'
         }
+        
+        // Clean up path - remove leading slashes or query parameters
+        path = path.split('?')[0].replace(/^\/+/, '');
+        
         try {
             const { data, error } = await supabase.storage.from('kyc_documents').createSignedUrl(path, 60 * 60); // 1 hour
             if (error) {
-                console.error('Error generating signed URL:', error);
+                console.error('Error generating signed URL for path:', path, error);
+                // Fallback: If it's already a public URL and signed URL fails, try returning it as is
+                if (urlOrPath.startsWith('http')) return urlOrPath;
                 return null;
             }
             return data.signedUrl;
         } catch (err) {
             console.error('Catch error generating signed URL:', err);
-            return null;
+            return urlOrPath.startsWith('http') ? urlOrPath : null;
         }
     };
 
