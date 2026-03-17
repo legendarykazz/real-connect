@@ -8,7 +8,9 @@
 UPDATE storage.buckets SET public = false WHERE id = 'kyc_documents';
 
 -- 2. Add an "Admins and Authenticated" policy for SELECT
--- This replaces or complements existing specific email policies
+DROP POLICY IF EXISTS "Allow authenticated Select" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can read KYC documents" ON storage.objects;
+
 CREATE POLICY "Allow authenticated Select"
 ON storage.objects
 FOR SELECT

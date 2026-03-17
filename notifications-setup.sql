@@ -20,17 +20,20 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
 -- STEP 3: Create RLS Policies
 -- Users can read their own notifications
+DROP POLICY IF EXISTS "Users can view their own notifications" ON public.notifications;
 CREATE POLICY "Users can view their own notifications"
   ON public.notifications FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Users can update (mark as read) their own notifications
+DROP POLICY IF EXISTS "Users can update their own notifications" ON public.notifications;
 CREATE POLICY "Users can update their own notifications"
   ON public.notifications FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
 -- Admins can view/manage all notifications (optional, but good practice)
+DROP POLICY IF EXISTS "Admins can manage all notifications" ON public.notifications;
 CREATE POLICY "Admins can manage all notifications"
   ON public.notifications FOR ALL
   USING (
