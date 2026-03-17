@@ -78,11 +78,20 @@ const AdminVerifications = () => {
             
             if (error) {
                 console.error('[KYC Debug] Download Error:', error, 'Status:', status);
+                // Force capture of non-enumerable properties like 'message'
+                const detailedError = {
+                    message: error.message,
+                    status: status,
+                    name: error.name,
+                    hint: error.hint,
+                    details: error.details,
+                    code: error.code
+                };
                 return { 
                     url: null, 
                     isBlob: false, 
-                    error: `${error.message || 'Unknown Error'} (Status: ${status || 'N/A'})`, 
-                    rawError: JSON.stringify(error),
+                    error: `${error.message || 'Access Denied'} (code: ${error.code || status || '403'})`, 
+                    rawError: JSON.stringify(detailedError),
                     rawPath: path 
                 };
             }
