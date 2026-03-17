@@ -78,17 +78,15 @@ const AdminVerifications = () => {
             
             if (error) {
                 console.error('[KYC Debug] Download Error:', error.message, 'for path:', path);
-                // Fallback to public URL if available and download fails
-                if (urlOrPath.startsWith('http')) return { url: urlOrPath, isBlob: false };
-                throw error;
+                return { url: urlOrPath.startsWith('http') ? urlOrPath : null, isBlob: false, error: error.message, rawPath: path };
             }
             
             const blobUrl = URL.createObjectURL(data);
             console.log('[KYC Debug] Successfully downloaded and created blob URL');
-            return { url: blobUrl, isBlob: true };
+            return { url: blobUrl, isBlob: true, rawPath: path };
         } catch (err) {
             console.error('[KYC Debug] Exception in getSecureUrl:', err);
-            return urlOrPath.startsWith('http') ? { url: urlOrPath, isBlob: false } : null;
+            return { url: urlOrPath.startsWith('http') ? urlOrPath : null, isBlob: false, error: err.message, rawPath: path };
         }
     };
 
@@ -120,7 +118,15 @@ const AdminVerifications = () => {
 
         const [idDoc, addressDoc, selfie] = results.map(r => r.status === 'fulfilled' ? r.value : null);
         
+        // Extract errors for UI display
+        const errors = {
+            idDoc: results[0].status === 'rejected' ? results[0].reason?.message || 'Download failed' : (idDoc?.error || null),
+            addressDoc: results[1].status === 'rejected' ? results[1].reason?.message || 'Download failed' : (addressDoc?.error || null),
+            selfie: results[2].status === 'rejected' ? results[2].reason?.message || 'Download failed' : (selfie?.error || null)
+        };
+
         setSecureUrls({ idDoc, addressDoc, selfie });
+        setUrlErrors(errors);
         setLoadingUrls(false);
     };
 
@@ -324,7 +330,7 @@ const AdminVerifications = () => {
                                 <div className="space-y-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><FileText className="w-4 h-4" /> ID Document ({selectedRequest.id_type})</p>
                                     <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.idDoc && setZoomedImage(secureUrls.idDoc.url)}>
-                                        {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.idDoc ? (
+                                        {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.idDoc && !urlErrors.idDoc ? (
                                             <>
                                                 <img 
                                                     src={secureUrls.idDoc.url} 
@@ -338,17 +344,22 @@ const AdminVerifications = () => {
                                                 />
                                                 <div className="hidden text-center p-4">
                                                     <XCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-                                                    <p className="text-xs text-red-500 font-medium">Image failed to load (Check console for 403/404)</p>
-                                                    <p className="text-[10px] text-gray-400 break-all mt-1">{secureUrls.idDoc.url.substring(0, 100)}...</p>
+                                                    <p className="text-xs text-red-500 font-medium">Image failed to load</p>
+                                                    <p className="text-[10px] text-gray-400 break-all mt-1">{secureUrls.idDoc.url.substring(0, 50)}...</p>
                                                 </div>
                                                 <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                     <span className="bg-white/90 p-2 rounded-lg shadow-sm"><ZoomIn className="w-5 h-5 text-brand-dark" /></span>
                                                 </div>
                                             </>
                                         ) : (
-                                            <div className="text-center">
-                                                <ImageIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                                                <p className="text-gray-400 text-sm">No image or URL invalid</p>
+                                            <div className="text-center p-4 bg-red-50 w-full h-full flex flex-col justify-center rounded-xl">
+                                                <XCircle className="w-6 h-6 text-red-500 mx-auto mb-2" />
+                                                <p className="text-xs text-red-700 font-bold mb-1">Load Failed</p>
+                                                <p className="text-[10px] text-red-600 mb-2 truncate px-2">{urlErrors.idDoc || 'Unknown connectivity issue'}</p>
+                                                <div className="mt-2 pt-2 border-t border-red-100">
+                                                    <p className="text-[8px] text-gray-400 uppercase font-bold">Extracted Path:</p>
+                                                    <p className="text-[9px] text-gray-500 break-all">{secureUrls.idDoc?.rawPath || 'None'}</p>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -357,7 +368,7 @@ const AdminVerifications = () => {
                                 <div className="space-y-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><ImageIcon className="w-4 h-4" /> Selfie (Liveness)</p>
                                     <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.selfie && setZoomedImage(secureUrls.selfie.url)}>
-                                        {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.selfie ? (
+                                        {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.selfie && !urlErrors.selfie ? (
                                             <>
                                                 <img 
                                                     src={secureUrls.selfie.url} 
@@ -378,9 +389,14 @@ const AdminVerifications = () => {
                                                 </div>
                                             </>
                                         ) : (
-                                            <div className="text-center">
-                                                <ImageIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                                                <p className="text-gray-400 text-sm">No image</p>
+                                            <div className="text-center p-4 bg-red-50 w-full h-full flex flex-col justify-center rounded-xl">
+                                                <XCircle className="w-6 h-6 text-red-500 mx-auto mb-2" />
+                                                <p className="text-xs text-red-700 font-bold mb-1">Load Failed</p>
+                                                <p className="text-[10px] text-red-600 mb-2 truncate px-2">{urlErrors.selfie || 'Unknown connectivity issue'}</p>
+                                                <div className="mt-2 pt-2 border-t border-red-100">
+                                                    <p className="text-[8px] text-gray-400 uppercase font-bold">Extracted Path:</p>
+                                                    <p className="text-[9px] text-gray-500 break-all">{secureUrls.selfie?.rawPath || 'None'}</p>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -388,7 +404,7 @@ const AdminVerifications = () => {
                                 <div className="space-y-2 sm:col-span-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><FileText className="w-4 h-4" /> Proof of Address</p>
                                     <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.addressDoc && setZoomedImage(secureUrls.addressDoc.url)}>
-                                        {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.addressDoc ? (
+                                        {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.addressDoc && !urlErrors.addressDoc ? (
                                             <>
                                                 <img 
                                                     src={secureUrls.addressDoc.url} 
@@ -409,9 +425,14 @@ const AdminVerifications = () => {
                                                 </div>
                                             </>
                                         ) : (
-                                            <div className="text-center">
-                                                <ImageIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                                                <p className="text-gray-400 text-sm">No image</p>
+                                            <div className="text-center p-4 bg-red-50 w-full h-full flex flex-col justify-center rounded-xl">
+                                                <XCircle className="w-6 h-6 text-red-500 mx-auto mb-2" />
+                                                <p className="text-xs text-red-700 font-bold mb-1">Load Failed</p>
+                                                <p className="text-[10px] text-red-600 mb-2 truncate px-2">{urlErrors.addressDoc || 'Unknown connectivity issue'}</p>
+                                                <div className="mt-2 pt-2 border-t border-red-100">
+                                                    <p className="text-[8px] text-gray-400 uppercase font-bold">Extracted Path:</p>
+                                                    <p className="text-[9px] text-gray-500 break-all">{secureUrls.addressDoc?.rawPath || 'None'}</p>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
