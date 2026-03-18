@@ -1,38 +1,29 @@
--- Security Fix: Ensure search_path is set for SECURITY DEFINER function
--- Run this in your Supabase SQL Editor to resolve the Advisor Warning!
+-- ==============================================================================
+-- SECURE FUNCTION SEARCH_PATH FIX
+-- This script secures the request_admin_notification function by setting a 
+-- fixed search_path, preventing potential search path hijacking.
+-- ==============================================================================
 
-CREATE OR REPLACE FUNCTION public.handle_property_status_change()
-RETURNS TRIGGER 
-SET search_path = ''
-AS $$
+-- 1. Redefine the function with a fixed search_path
+CREATE OR REPLACE FUNCTION public.request_admin_notification()
+RETURNS TRIGGER AS $$
 BEGIN
-  -- Only trigger if the status actually changed
-  IF OLD.status IS DISTINCT FROM NEW.status THEN
-    
-    -- If approved
-    IF NEW.status = 'approved' THEN
-      INSERT INTO public.notifications (user_id, property_id, title, message, type)
-      VALUES (
-        NEW.user_id, 
-        NEW.id, 
-        'Property Approved', 
-        'Congratulations! Your listing for ' || NEW.size || ' at ' || NEW.location || ' has been approved and is now live.', 
-        'approved'
-      );
-    -- If rejected
-    ELSIF NEW.status = 'rejected' THEN
-      INSERT INTO public.notifications (user_id, property_id, title, message, type)
-      VALUES (
-        NEW.user_id, 
-        NEW.id, 
-        'Property Rejected', 
-        'Unfortunately, your listing for ' || NEW.size || ' at ' || NEW.location || ' was rejected. Please review our guidelines.', 
-        'rejected'
-      );
-    END IF;
-    
-  END IF;
-  
+  -- This sends an HTTP POST request to your Supabase Edge Function
+  PERFORM
+    net.http_post(
+      url := 'https://izwsxkpjnuiezhxbqfbl.supabase.co/functions/v1/admin-notify',
+      headers := '{"Content-Type": "application/json"}'::jsonb,
+      body := jsonb_build_object(
+        'table', TG_TABLE_NAME,
+        'record', row_to_json(NEW)
+      )::jsonb
+    );
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql 
+SECURITY DEFINER 
+SET search_path = public, net, pg_temp;
+
+-- Documentation comment
+COMMENT ON FUNCTION public.request_admin_notification() 
+IS 'Securely triggers admin notifications via Edge Functions with a fixed search_path.';
