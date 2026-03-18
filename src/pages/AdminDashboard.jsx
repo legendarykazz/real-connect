@@ -114,9 +114,9 @@ const AdminDashboard = () => {
         try {
             // 1. Fetch ALL users from custom view
             const { data: allUsers, error: usersErr } = await supabase
-                .from('admin_users_view')
-                .select('*')
-                .order('created_at', { ascending: false });
+                .rpc('get_admin_users');
+                
+                
 
             if (usersErr) throw usersErr;
 
