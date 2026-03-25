@@ -92,7 +92,7 @@ export default function KYCWizard() {
                 if (dbError.message?.includes('user_verifications_id_number_key') || dbError.message?.includes('duplicate key') || dbError.code === '23505') {
                     throw new Error('This ID Number is already registered to another account.');
                 }
-                throw err;
+                throw dbError;
             }
 
             Alert.alert('Success', 'Verification submitted successfully! Our team will review your application soon.');
