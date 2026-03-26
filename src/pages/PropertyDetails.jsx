@@ -20,6 +20,7 @@ const PropertyDetails = () => {
     const [activeImg, setActiveImg] = useState(0);
     const [lightboxIndex, setLightboxIndex] = useState(-1); // -1 = closed; 0+ = open at index
     const [lightboxMedia, setLightboxMedia] = useState([]); // Array of {url, type} mappings
+    const [pdfUrl, setPdfUrl] = useState(null);
 
     React.useEffect(() => {
         const fetchProperty = async () => {
@@ -135,7 +136,7 @@ const PropertyDetails = () => {
     };
 
     const handleViewDocument = (doc) => {
-        if (doc.url) window.open(doc.url, '_blank');
+        if (doc.url) setPdfUrl(doc.url);
     };
 
     const handleDownloadDocument = async (doc) => {
@@ -221,6 +222,42 @@ const PropertyDetails = () => {
                     <div className="absolute bottom-10 text-white/50 text-sm">
                         Use Arrow Keys to Navigate • Click X to Close
                     </div>
+            {/* PDF Modal Viewer */}
+            {pdfUrl && (
+                <div className="fixed inset-0 z-[250] bg-black/80 flex flex-col items-center justify-center p-2 sm:p-6 animate-fade-in backdrop-blur-sm">
+                    <div className="bg-white w-full max-w-5xl h-full sm:h-[90vh] rounded-2xl flex flex-col overflow-hidden shadow-2xl border border-gray-200">
+                        <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <div className="flex items-center">
+                                <FileText className="w-5 h-5 mr-3 text-brand-light-blue" />
+                                <h3 className="font-bold text-brand-dark">Resource Viewer</h3>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => window.open(pdfUrl, '_blank')}
+                                    className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+                                    title="Open in new tab"
+                                >
+                                    <ExternalLink className="w-5 h-5" />
+                                </button>
+                                <button
+                                    onClick={() => setPdfUrl(null)}
+                                    className="p-2 hover:bg-gray-200 rounded-full transition-colors text-brand-dark"
+                                    title="Close"
+                                >
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex-1 w-full bg-gray-100">
+                            <iframe
+                                src={`${pdfUrl}#toolbar=0`}
+                                className="w-full h-full border-0"
+                                title="Document Viewer"
+                            />
+                        </div>
+                    </div>
+                    {/* Click outside to close */}
+                    <div className="absolute inset-0 -z-10" onClick={() => setPdfUrl(null)} />
                 </div>
             )}
 
@@ -474,7 +511,7 @@ const PropertyDetails = () => {
                                      <button
                                          onClick={() => {
                                              if (property.verification.reportUrl) {
-                                                 window.open(property.verification.reportUrl, '_blank');
+                                                 setPdfUrl(property.verification.reportUrl);
                                              } else {
                                                  alert('The final verification report is currently being processed by our legal team.');
                                              }
