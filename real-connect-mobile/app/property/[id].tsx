@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { MapPin, Phone, Mail, ArrowLeft, Ruler, Calendar, Play, ZoomIn, FileText, Download, ExternalLink } from 'lucide-react-native';
+import { MapPin, Phone, Mail, ArrowLeft, Ruler, Calendar, Play, ZoomIn, FileText, Download, ExternalLink, ShieldCheck, CheckCircle2 } from 'lucide-react-native';
 import MapView, { Marker } from 'react-native-maps';
 import MediaLightbox from '../../components/MediaLightbox';
 
@@ -222,7 +222,41 @@ export default function PropertyDetailsScreen() {
                             </ScrollView>
                         </View>
                     )}
-                    
+
+                    {/* Verification Report */}
+                    <View className="mb-8 p-5 bg-green-50/30 rounded-3xl border border-green-100">
+                        <View className="flex-row items-center mb-5 pb-3 border-b border-green-100/50">
+                            <View className="bg-brand-green p-2.5 rounded-2xl mr-3 shadow-sm">
+                                <ShieldCheck color="white" size={20} />
+                            </View>
+                            <Text className="text-lg font-bold text-brand-dark">Verification Report</Text>
+                        </View>
+                        
+                        <View className="mb-4">
+                            <VerificationItem label="Ownership Verified" status={property.owner_verified} />
+                            <VerificationItem label="Documents Checked" status={property.docs_verified} />
+                            <VerificationItem label="Survey Verified" status={property.survey_verified} />
+                            <VerificationItem label="Location Verified" status={property.location_verified} />
+                            <VerificationItem label="Free from Govt Acquisition" status={property.acquisition_free} />
+                        </View>
+
+                        <TouchableOpacity 
+                            onPress={() => {
+                                if (property.verification_report_url) {
+                                    Linking.openURL(property.verification_report_url);
+                                } else {
+                                    alert('Report coming soon! Our team is finalizing the official verification document for this property.');
+                                }
+                            }}
+                            className={`w-full py-4 rounded-2xl flex-row justify-center items-center border-2 ${property.verification_report_url ? 'border-brand-green bg-white' : 'border-gray-200 bg-gray-50'}`}
+                        >
+                            <FileText color={property.verification_report_url ? "#10b981" : "#9ca3af"} size={20} />
+                            <Text className={`font-bold ml-2 ${property.verification_report_url ? 'text-brand-green' : 'text-gray-400'}`}>
+                                View PDF Report
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
                     {/* Documents */}
                     {property.documents && property.documents.length > 0 && (
                         <View className="mb-8 p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
@@ -284,3 +318,19 @@ export default function PropertyDetailsScreen() {
         </View>
     );
 }
+
+const VerificationItem = ({ label, status }: { label: string; status: boolean }) => (
+    <View className="flex-row items-center justify-between mb-3">
+        <Text className="text-gray-600 font-semibold text-sm">{label}</Text>
+        {status ? (
+            <View className="flex-row items-center bg-white px-2.5 py-1 rounded-xl border border-green-100 shadow-sm">
+                <CheckCircle2 color="#10b981" size={12} />
+                <Text className="text-brand-green font-bold text-[10px] ml-1 uppercase">Verified</Text>
+            </View>
+        ) : (
+            <View className="flex-row items-center bg-white/50 px-2.5 py-1 rounded-xl border border-gray-100">
+                <Text className="text-gray-400 font-bold text-[10px] uppercase">Pending</Text>
+            </View>
+        )}
+    </View>
+);

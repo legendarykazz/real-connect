@@ -92,11 +92,12 @@ const PropertyDetails = () => {
                         phone: data.phone || '',
                     },
                     verification: {
-                        ownership: data.status === 'approved',
-                        documents: (data.document_urls || []).length > 0,
-                        survey: (data.document_urls || []).length > 0,
-                        location: !!data.location,
-                        freeFromAcquisition: data.status === 'approved',
+                        ownership: data.owner_verified || false,
+                        documents: data.docs_verified || false,
+                        survey: data.survey_verified || false,
+                        location: data.location_verified || false,
+                        freeFromAcquisition: data.acquisition_free || false,
+                        reportUrl: data.verification_report_url || null,
                     },
                 });
 
@@ -470,11 +471,18 @@ const PropertyDetails = () => {
                                         <VerificationItem label="Location Verified" status={property.verification.location} />
                                         <VerificationItem label="Free from Govt Acquisition" status={property.verification.freeFromAcquisition} />
                                     </div>
-                                    <button
-                                        onClick={() => alert('Verification report is issued by RealConnect upon full listing approval.')}
-                                        className="w-full border-2 border-brand-green text-brand-green hover:bg-brand-green hover:text-white font-bold py-3 rounded-xl transition-colors flex justify-center items-center">
-                                        <FileCheck className="w-5 h-5 mr-2" /> View PDF Report
-                                    </button>
+                                     <button
+                                         onClick={() => {
+                                             if (property.verification.reportUrl) {
+                                                 window.open(property.verification.reportUrl, '_blank');
+                                             } else {
+                                                 alert('The final verification report is currently being processed by our legal team.');
+                                             }
+                                         }}
+                                         title={property.verification.reportUrl ? 'Read full report' : 'Report coming soon'}
+                                         className={`w-full border-2 font-bold py-3 rounded-xl transition-colors flex justify-center items-center ${property.verification.reportUrl ? 'border-brand-green text-brand-green hover:bg-brand-green hover:text-white' : 'border-gray-200 text-gray-400'}`}>
+                                         <FileCheck className="w-5 h-5 mr-2" /> View PDF Report
+                                     </button>
                                 </div>
 
                                 {/* RealConnect Contact Card */}

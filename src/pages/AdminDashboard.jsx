@@ -45,6 +45,31 @@ const AdminDashboard = () => {
     const toastTimerRef = useRef(null);
     const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0);
 
+    // Verification Report Edit State
+    const [verificationData, setVerificationData] = useState({
+        owner_verified: false,
+        docs_verified: false,
+        survey_verified: false,
+        location_verified: false,
+        acquisition_free: false,
+        verification_report_url: null
+    });
+    const [uploadingReport, setUploadingReport] = useState(false);
+    const [savingVerification, setSavingVerification] = useState(false);
+
+    useEffect(() => {
+        if (selectedListing) {
+            setVerificationData({
+                owner_verified: selectedListing.owner_verified || false,
+                docs_verified: selectedListing.docs_verified || false,
+                survey_verified: selectedListing.survey_verified || false,
+                location_verified: selectedListing.location_verified || false,
+                acquisition_free: selectedListing.acquisition_free || false,
+                verification_report_url: selectedListing.verification_report_url || null
+            });
+        }
+    }, [selectedListing]);
+
     // Users state
     const [users, setUsers] = useState([]);
     const [usersLoading, setUsersLoading] = useState(false);
@@ -332,6 +357,51 @@ const AdminDashboard = () => {
         const { error } = await supabase.from('properties').update({ status: 'rejected' }).eq('id', id);
         if (error) { alert('Error: ' + error.message); return; }
         fetchListings();
+    };
+
+    const handleReportUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setUploadingReport(true);
+        try {
+            const url = await uploadFile(file, 'verification-reports');
+            setVerificationData(prev => ({ ...prev, verification_report_url: url }));
+            setToastMsg('Report uploaded successfully!');
+        } catch (err) {
+            console.error(err);
+            setToastMsg('Upload failed: ' + err.message);
+        } finally {
+            setUploadingReport(false);
+        }
+    };
+
+    const handleSaveVerification = async () => {
+        if (!selectedListing) return;
+        setSavingVerification(true);
+        try {
+            const { error } = await supabase
+                .from('properties')
+                .update({
+                    owner_verified: verificationData.owner_verified,
+                    docs_verified: verificationData.docs_verified,
+                    survey_verified: verificationData.survey_verified,
+                    location_verified: verificationData.location_verified,
+                    acquisition_free: verificationData.acquisition_free,
+                    verification_report_url: verificationData.verification_report_url
+                })
+                .eq('id', selectedListing.id);
+
+            if (error) throw error;
+            
+            // Update local state
+            setListings(prev => prev.map(l => l.id === selectedListing.id ? { ...l, ...verificationData } : l));
+            setToastMsg('Verification report updated!');
+        } catch (err) {
+            console.error(err);
+            setToastMsg('Failed to save verification: ' + err.message);
+        } finally {
+            setSavingVerification(false);
+        }
     };
 
     const handleDeleteListing = async (id) => {
@@ -1345,6 +1415,71 @@ const AdminDashboard = () => {
                                     </div>
                                 )}
 
+                                {/* Verification Report Management */}
+                                <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-4 shadow-sm mb-6">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <ShieldCheck className="w-5 h-5 text-brand-green" />
+                                        <h3 className="font-bold text-brand-dark">Verification Report Management</h3>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <VerificationToggle
+                                            label="Ownership Verified"
+                                            checked={verificationData.owner_verified}
+                                            onChange={(val) => setVerificationData(p => ({ ...p, owner_verified: val }))}
+                                        />
+                                        <VerificationToggle
+                                            label="Documents Checked"
+                                            checked={verificationData.docs_verified}
+                                            onChange={(val) => setVerificationData(p => ({ ...p, docs_verified: val }))}
+                                        />
+                                        <VerificationToggle
+                                            label="Survey Verified"
+                                            checked={verificationData.survey_verified}
+                                            onChange={(val) => setVerificationData(p => ({ ...p, survey_verified: val }))}
+                                        />
+                                        <VerificationToggle
+                                            label="Location Verified"
+                                            checked={verificationData.location_verified}
+                                            onChange={(val) => setVerificationData(p => ({ ...p, location_verified: val }))}
+                                        />
+                                        <VerificationToggle
+                                            label="Free from Govt Acquisition"
+                                            checked={verificationData.acquisition_free}
+                                            onChange={(val) => setVerificationData(p => ({ ...p, acquisition_free: val }))}
+                                        />
+                                    </div>
+
+                                    <div className="pt-4 border-t border-gray-100">
+                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Final PDF Report</p>
+                                        <div className="flex items-center gap-3">
+                                            {verificationData.verification_report_url ? (
+                                                <div className="flex-1 flex items-center justify-between bg-green-50 px-3 py-2 rounded-xl text-xs font-medium text-brand-green border border-green-100">
+                                                    <span className="truncate max-w-[150px]">Report Uploaded</span>
+                                                    <div className="flex gap-2">
+                                                        <a href={verificationData.verification_report_url} target="_blank" rel="noreferrer" className="underline">View</a>
+                                                        <button onClick={() => setVerificationData(p => ({ ...p, verification_report_url: null }))} className="text-red-500">Remove</button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <label className="flex-1 cursor-pointer bg-gray-50 hover:bg-gray-100 border-2 border-dashed border-gray-200 rounded-xl px-4 py-3 flex items-center justify-center gap-2 transition-colors">
+                                                    <UploadCloud className="w-4 h-4 text-gray-400" />
+                                                    <span className="text-xs font-bold text-gray-500">{uploadingReport ? 'Uploading...' : 'Upload PDF Report'}</span>
+                                                    <input type="file" accept="application/pdf" className="hidden" onChange={handleReportUpload} disabled={uploadingReport} />
+                                                </label>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={handleSaveVerification}
+                                        disabled={savingVerification}
+                                        className="w-full bg-brand-dark text-white py-2.5 rounded-xl font-bold text-sm hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        <Save className="w-4 h-4" /> {savingVerification ? 'Saving...' : 'Update Verification Status'}
+                                    </button>
+                                </div>
+
                                 {/* Submission date */}
                                 <p className="text-xs text-gray-400 text-center">
                                     Submitted {new Date(selectedListing.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -1421,3 +1556,15 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
+const VerificationToggle = ({ label, checked, onChange }) => (
+    <div className="flex items-center justify-between">
+        <span className="text-sm text-gray-600 font-medium">{label}</span>
+        <button
+            onClick={() => onChange(!checked)}
+            className={`w-10 h-5 rounded-full transition-colors relative ${checked ? 'bg-brand-green' : 'bg-gray-200'}`}
+        >
+            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${checked ? 'right-1' : 'left-1'}`} />
+        </button>
+    </div>
+);
