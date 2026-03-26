@@ -99,8 +99,8 @@ const BrowseLands = () => {
         .filter(loc => locationQuery && loc.toLowerCase().includes(locationQuery.toLowerCase()))
         .slice(0, 5);
 
-    const PropertyCard = ({ property, mobile = false }) => (
-        <div className={`bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 ${!mobile ? 'min-w-[320px] max-w-[320px] snap-center shrink-0' : ''}`}>
+    const PropertyCard = ({ property }) => (
+        <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 flex flex-col h-full hover:shadow-md transition-shadow">
             <Link to={`/property/${property.id}`} className="block relative h-56 bg-gray-100">
                 {property.image_url ? (
                     <img src={property.image_url} alt={property.location} className="w-full h-full object-cover" loading="lazy" />
@@ -337,17 +337,10 @@ const BrowseLands = () => {
                     </div>
                 )}
 
-                {/* Desktop: Horizontal scroll */}
+                {/* Main Grid: Vertical list for all screens */}
                 {!loading && !error && filteredListings.length > 0 && (
-                    <div className="overflow-x-auto pb-8 pt-4 -mx-4 px-4 hidden md:flex space-x-6 snap-x snap-mandatory hide-scrollbar">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8 pb-24">
                         {filteredListings.map(property => <PropertyCard key={property.id} property={property} />)}
-                    </div>
-                )}
-
-                {/* Mobile: Vertical list */}
-                {!loading && !error && filteredListings.length > 0 && (
-                    <div className="pb-24 md:hidden space-y-6">
-                        {filteredListings.map(property => <PropertyCard key={property.id} property={property} mobile />)}
                     </div>
                 )}
             </div>
