@@ -235,11 +235,11 @@ const PropertyDetails = () => {
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={() => window.open(pdfUrl, '_blank')}
+                                    onClick={() => handleDownloadDocument({ url: pdfUrl, name: 'Verification Report' })}
                                     className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
-                                    title="Open in new tab"
+                                    title="Download Document"
                                 >
-                                    <ExternalLink className="w-5 h-5" />
+                                    <Download className="w-5 h-5" />
                                 </button>
                                 <button
                                     onClick={() => setPdfUrl(null)}
