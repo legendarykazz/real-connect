@@ -222,6 +222,8 @@ const PropertyDetails = () => {
                     <div className="absolute bottom-10 text-white/50 text-sm">
                         Use Arrow Keys to Navigate • Click X to Close
                     </div>
+                </div>
+            )}
             {/* PDF Modal Viewer */}
             {pdfUrl && (
                 <div className="fixed inset-0 z-[250] bg-black/80 flex flex-col items-center justify-center p-2 sm:p-6 animate-fade-in backdrop-blur-sm">

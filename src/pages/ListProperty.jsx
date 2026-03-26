@@ -159,6 +159,7 @@ const ListProperty = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [uploadProgress, setUploadProgress] = useState('');
+    const [submittedKyc, setSubmittedKyc] = useState(null); // Full KYC record from DB
 
     // --- KYC Verification State ---
     const [showKYCForm, setShowKYCForm] = useState(false);
@@ -183,6 +184,7 @@ const ListProperty = () => {
     const [showLightbox, setShowLightbox] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState(0);
     const [lightboxMedia, setLightboxMedia] = useState([]); // [{url, type}]
+    const [pdfUrl, setPdfUrl] = useState(null); // URL for inline PDF viewer
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -258,7 +260,7 @@ const ListProperty = () => {
                 // Check both tables to ensure we don't block users due to sync delays
                 const [profileRes, verifyRes] = await Promise.all([
                     supabase.from('user_profiles').select('is_verified').eq('user_id', user.id).single(),
-                    supabase.from('user_verifications').select('status').eq('user_id', user.id).single()
+                    supabase.from('user_verifications').select('*').eq('user_id', user.id).single()
                 ]);
 
                 const profileVerified = profileRes.data?.is_verified === true;
@@ -269,8 +271,9 @@ const ListProperty = () => {
                     setIsVerified(true);
                 } else {
                     setIsVerified(false);
-                    if (verifyRes.data?.status === 'pending') {
+                    if (verifyRes.data?.status === 'pending' || verifyRes.data?.status === 'rejected') {
                         setKycSuccess(true);
+                        setSubmittedKyc(verifyRes.data);
                     }
                 }
             } catch (err) {
@@ -483,6 +486,40 @@ const ListProperty = () => {
                             <p className="text-gray-600 mb-8 text-lg">
                                 Your KYC documents have been successfully submitted and are currently being reviewed by our admin team. We will notify you once approved.
                             </p>
+                            
+                            {submittedKyc && (
+                                <div className="mb-8 p-6 bg-gray-50 rounded-2xl border border-gray-100 text-left">
+                                    <h3 className="font-bold text-brand-dark mb-4 border-b border-gray-200 pb-2">Submitted Documents</h3>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between p-3 bg-white rounded-xl shadow-sm border border-gray-100">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-blue-50 rounded-lg"><ImageIcon className="w-4 h-4 text-blue-500" /></div>
+                                                <span className="text-sm font-medium">Identity Document</span>
+                                            </div>
+                                            <button onClick={() => { setLightboxMedia([{url: submittedKyc.id_document_url, type: 'image'}]); setLightboxIndex(0); setShowLightbox(true); }} className="text-brand-green text-xs font-bold hover:underline">View</button>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-white rounded-xl shadow-sm border border-gray-100">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-purple-50 rounded-lg"><FileText className="w-4 h-4 text-purple-500" /></div>
+                                                <span className="text-sm font-medium">Proof of Address</span>
+                                            </div>
+                                            <button onClick={() => { 
+                                                const url = submittedKyc.address_document_url;
+                                                if (url.toLowerCase().endsWith('.pdf')) setPdfUrl(url);
+                                                else { setLightboxMedia([{url, type: 'image'}]); setLightboxIndex(0); setShowLightbox(true); }
+                                            }} className="text-brand-green text-xs font-bold hover:underline">View</button>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-white rounded-xl shadow-sm border border-gray-100">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-orange-50 rounded-lg"><CameraIcon className="w-4 h-4 text-orange-500" /></div>
+                                                <span className="text-sm font-medium">Selfie Check</span>
+                                            </div>
+                                            <button onClick={() => { setLightboxMedia([{url: submittedKyc.selfie_url, type: 'image'}]); setLightboxIndex(0); setShowLightbox(true); }} className="text-brand-green text-xs font-bold hover:underline">View</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <Link to="/browse" className="w-full bg-brand-green text-white font-bold py-4 px-8 rounded-xl shadow-md hover:bg-green-700 transition-colors inline-block">
                                 Browse Listings
                             </Link>
@@ -524,7 +561,27 @@ const ListProperty = () => {
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">2. Proof of Address (Image or PDF) *</label>
                                     <p className="text-xs text-gray-500 mb-1">Utility bill, bank statement, etc. (max 3 months old)</p>
-                                    <input required type="file" accept="image/*,.pdf" onChange={(e) => setKycAddressDoc(e.target.files[0])} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white" />
+                                    <div className="flex gap-2">
+                                        <input required type="file" accept="image/*,.pdf" onChange={(e) => setKycAddressDoc(e.target.files[0])} className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white" />
+                                        {kycAddressDoc && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const url = URL.createObjectURL(kycAddressDoc);
+                                                    if (kycAddressDoc.type === 'application/pdf') {
+                                                        setPdfUrl(url);
+                                                    } else {
+                                                        setLightboxMedia([{ url, type: 'image' }]);
+                                                        setLightboxIndex(0);
+                                                        setShowLightbox(true);
+                                                    }
+                                                }}
+                                                className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-xs font-bold shrink-0"
+                                            >
+                                                Preview
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">3. Liveness Check (Selfie) *</label>
@@ -791,9 +848,22 @@ const ListProperty = () => {
                                                 <p className="text-sm font-semibold truncate">{doc.name}</p>
                                                 <p className="text-xs text-gray-400">{doc.size}</p>
                                             </div>
-                                            <button type="button" onClick={() => setDocs(p => p.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500 p-1">
-                                                <X className="w-4 h-4" />
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => {
+                                                        const url = URL.createObjectURL(doc.file);
+                                                        setPdfUrl(url);
+                                                    }}
+                                                    className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                                    title="Preview document"
+                                                >
+                                                    <ZoomIn className="w-4 h-4" />
+                                                </button>
+                                                <button type="button" onClick={() => setDocs(p => p.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500 p-1">
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -894,6 +964,44 @@ const ListProperty = () => {
                             {lightboxIndex + 1} / {lightboxMedia.length}
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* PDF Viewer Modal */}
+            {pdfUrl && (
+                <div className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-scale-in">
+                        <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-50 rounded-xl">
+                                    <FileText className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <h3 className="font-bold text-brand-dark text-sm sm:text-base">Document Preview</h3>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => window.open(pdfUrl, '_blank')}
+                                    className="p-2.5 text-gray-400 hover:text-brand-green hover:bg-green-50 rounded-full transition-all"
+                                    title="Open / Download"
+                                >
+                                    <Download className="w-5 h-5" />
+                                </button>
+                                <button
+                                    onClick={() => setPdfUrl(null)}
+                                    className="p-2.5 bg-gray-100 text-gray-500 hover:bg-gray-200 rounded-full transition-all"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex-1 bg-gray-50 relative">
+                            <iframe
+                                src={`${pdfUrl}#toolbar=0`}
+                                className="w-full h-full border-none"
+                                title="Document Viewer"
+                            />
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
