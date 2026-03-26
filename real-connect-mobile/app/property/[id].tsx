@@ -149,6 +149,44 @@ export default function PropertyDetailsScreen() {
                         </View>
                     </View>
 
+                    {/* Verification Report - High Prominence */}
+                    <View className="mb-8 p-5 bg-white rounded-3xl border border-green-100 shadow-sm">
+                        <View className="flex-row items-center mb-5 pb-3 border-b border-green-50">
+                            <View className="bg-brand-green p-2.5 rounded-2xl mr-3 shadow-md">
+                                <ShieldCheck color="white" size={20} />
+                            </View>
+                            <View>
+                                <Text className="text-lg font-bold text-brand-dark">Verification Status</Text>
+                                <Text className="text-xs text-gray-400">Official RealConnect verification report</Text>
+                            </View>
+                        </View>
+                        
+                        <View className="mb-5">
+                            <VerificationItem label="Ownership Verified" status={property.owner_verified || false} />
+                            <VerificationItem label="Documents Checked" status={property.docs_verified || false} />
+                            <VerificationItem label="Survey Verified" status={property.survey_verified || false} />
+                            <VerificationItem label="Location Verified" status={property.location_verified || false} />
+                            <VerificationItem label="Free from Govt Acquisition" status={property.acquisition_free || false} />
+                        </View>
+
+                        <TouchableOpacity 
+                            onPress={() => {
+                                if (property.verification_report_url) {
+                                    WebBrowser.openBrowserAsync(property.verification_report_url);
+                                } else {
+                                    alert('Report coming soon! Our team is finalizing the official verification document for this property.');
+                                }
+                            }}
+                            activeOpacity={0.8}
+                            className={`w-full py-4 rounded-2xl flex-row justify-center items-center border-2 ${property.verification_report_url ? 'border-brand-green bg-green-50/10' : 'border-gray-200 bg-gray-50'}`}
+                        >
+                            <FileText color={property.verification_report_url ? "#10b981" : "#9ca3af"} size={20} />
+                            <Text className={`font-bold ml-2 ${property.verification_report_url ? 'text-brand-green' : 'text-gray-400'}`}>
+                                {property.verification_report_url ? 'View Full PDF Report' : 'Report Processing...'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
                     {/* Description */}
                     <View className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-8">
                         <Text className="text-lg font-bold text-brand-dark mb-3">Property Description</Text>
@@ -223,40 +261,6 @@ export default function PropertyDetailsScreen() {
                             </ScrollView>
                         </View>
                     )}
-
-                    {/* Verification Report */}
-                    <View className="mb-8 p-5 bg-green-50/30 rounded-3xl border border-green-100">
-                        <View className="flex-row items-center mb-5 pb-3 border-b border-green-100/50">
-                            <View className="bg-brand-green p-2.5 rounded-2xl mr-3 shadow-sm">
-                                <ShieldCheck color="white" size={20} />
-                            </View>
-                            <Text className="text-lg font-bold text-brand-dark">Verification Report</Text>
-                        </View>
-                        
-                        <View className="mb-4">
-                            <VerificationItem label="Ownership Verified" status={property.owner_verified} />
-                            <VerificationItem label="Documents Checked" status={property.docs_verified} />
-                            <VerificationItem label="Survey Verified" status={property.survey_verified} />
-                            <VerificationItem label="Location Verified" status={property.location_verified} />
-                            <VerificationItem label="Free from Govt Acquisition" status={property.acquisition_free} />
-                        </View>
-
-                        <TouchableOpacity 
-                            onPress={() => {
-                                if (property.verification_report_url) {
-                                    WebBrowser.openBrowserAsync(property.verification_report_url);
-                                } else {
-                                    alert('Report coming soon! Our team is finalizing the official verification document for this property.');
-                                }
-                            }}
-                            className={`w-full py-4 rounded-2xl flex-row justify-center items-center border-2 ${property.verification_report_url ? 'border-brand-green bg-white' : 'border-gray-200 bg-gray-50'}`}
-                        >
-                            <FileText color={property.verification_report_url ? "#10b981" : "#9ca3af"} size={20} />
-                            <Text className={`font-bold ml-2 ${property.verification_report_url ? 'text-brand-green' : 'text-gray-400'}`}>
-                                View PDF Report
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
 
                     {/* Documents */}
                     {property.documents && property.documents.length > 0 && (
