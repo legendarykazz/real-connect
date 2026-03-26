@@ -99,6 +99,13 @@ export default function PropertyDetailsScreen() {
                     <View className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 hover:opacity-100">
                         <ZoomIn color="white" size={32} opacity={0.6} />
                     </View>
+                    {property.availability === 'sold' && (
+                        <View className="absolute inset-0 bg-black/30 items-center justify-center">
+                            <View className="bg-red-600 px-6 py-3 rounded-2xl border-4 border-white transform -rotate-12 shadow-2xl">
+                                <Text className="text-white font-black text-2xl tracking-widest">SOLD</Text>
+                            </View>
+                        </View>
+                    )}
                     <TouchableOpacity
                         onPress={() => router.back()}
                         className="absolute top-12 left-4 bg-black/50 p-3 rounded-full"

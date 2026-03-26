@@ -101,6 +101,13 @@ export default function BrowseScreen() {
           <View className="absolute top-3 right-3 bg-black/40 px-2 py-1 rounded-full">
             <Text className="text-white text-[10px] font-bold">{item.property_type}</Text>
           </View>
+          {item.availability === 'sold' && (
+            <View className="absolute inset-0 bg-black/40 items-center justify-center">
+              <View className="bg-red-600 px-4 py-2 rounded-xl border-2 border-white transform -rotate-12">
+                <Text className="text-white font-black text-lg tracking-widest">SOLD</Text>
+              </View>
+            </View>
+          )}
         </View>
         <View className="p-4">
           <Text className="font-bold text-lg text-brand-dark mb-1">₦{parseInt(String(item.price || 0).replace(/\D/g, ''), 10).toLocaleString()}</Text>
