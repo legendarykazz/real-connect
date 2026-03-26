@@ -56,6 +56,7 @@ const AdminDashboard = () => {
     });
     const [uploadingReport, setUploadingReport] = useState(false);
     const [savingVerification, setSavingVerification] = useState(false);
+    const [pdfUrl, setPdfUrl] = useState(null);
 
     useEffect(() => {
         if (selectedListing) {
@@ -823,16 +824,14 @@ const AdminDashboard = () => {
                                                         {listing.document_urls?.length > 0 ? (
                                                             <div className="flex items-center gap-1.5">
                                                                 {listing.document_urls.map((url, i) => (
-                                                                    <a
+                                                                    <button
                                                                         key={i}
-                                                                        href={url}
-                                                                        target="_blank"
-                                                                        rel="noreferrer"
-                                                                        className="text-blue-500 hover:text-blue-700 bg-blue-50 p-1.5 rounded-lg transition-colors"
+                                                                        onClick={() => setPdfUrl(url)}
+                                                                        className="text-blue-500 hover:text-blue-700 bg-blue-50 p-1.5 rounded-lg transition-colors cursor-pointer"
                                                                         title={`View Document ${i + 1}`}
                                                                     >
                                                                         <FileText className="w-4 h-4" />
-                                                                    </a>
+                                                                    </button>
                                                                 ))}
                                                             </div>
                                                         ) : (
@@ -863,9 +862,9 @@ const AdminDashboard = () => {
                                                         <div className="flex items-center gap-2">
                                                             {/* View details button */}
                                                             <button
-                                                                onClick={() => { 
-                                                                    setSelectedListing(listing); 
-                                                                    setModalImageIdx(0); 
+                                                                onClick={() => {
+                                                                    setSelectedListing(listing);
+                                                                    setModalImageIdx(0);
                                                                     const media = [];
                                                                     if (listing.image_urls?.length) listing.image_urls.forEach(u => media.push({ url: u, type: 'image' }));
                                                                     else if (listing.image_url) media.push({ url: listing.image_url, type: 'image' });
@@ -1386,11 +1385,11 @@ const AdminDashboard = () => {
                                         <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Documents</p>
                                         <div className="space-y-2">
                                             {selectedListing.document_urls.map((url, i) => (
-                                                <a key={i} href={url} target="_blank" rel="noreferrer"
-                                                    className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 hover:bg-blue-100 transition-colors">
+                                                <button key={i} onClick={() => setPdfUrl(url)}
+                                                    className="w-full flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 hover:bg-blue-100 transition-colors text-left">
                                                     <FileDown className="w-4 h-4 text-blue-500" />
                                                     <span className="text-sm font-medium text-blue-700 truncate">Document {i + 1}</span>
-                                                </a>
+                                                </button>
                                             ))}
                                         </div>
                                     </div>
@@ -1457,8 +1456,8 @@ const AdminDashboard = () => {
                                                 <div className="flex-1 flex items-center justify-between bg-green-50 px-3 py-2 rounded-xl text-xs font-medium text-brand-green border border-green-100">
                                                     <span className="truncate max-w-[150px]">Report Uploaded</span>
                                                     <div className="flex gap-2">
-                                                        <a href={verificationData.verification_report_url} target="_blank" rel="noreferrer" className="underline">View</a>
-                                                        <button onClick={() => setVerificationData(p => ({ ...p, verification_report_url: null }))} className="text-red-500">Remove</button>
+                                                        <button onClick={() => setPdfUrl(verificationData.verification_report_url)} className="underline cursor-pointer">View</button>
+                                                        <button onClick={() => setVerificationData(p => ({ ...p, verification_report_url: null }))} className="text-red-500 cursor-pointer">Remove</button>
                                                     </div>
                                                 </div>
                                             ) : (
@@ -1548,6 +1547,46 @@ const AdminDashboard = () => {
                         ) : (
                             <video src={lightboxMedia[lightboxIndex].url} controls autoPlay className="max-w-full max-h-[80vh] object-contain" />
                         )}
+                    </div>
+                </div>
+            )}
+            {/* ===== PDF VIEWER MODAL ===== */}
+            {pdfUrl && (
+                <div className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-scale-in">
+                        <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-50 rounded-xl">
+                                    <FileText className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-brand-dark">Document Viewer</h3>
+                                    <p className="text-[10px] text-gray-400 font-medium truncate max-w-[200px] sm:max-w-md">{pdfUrl}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => window.open(pdfUrl, '_blank')}
+                                    className="p-2.5 text-gray-400 hover:text-brand-green hover:bg-green-50 rounded-full transition-all"
+                                    title="Open in new tab"
+                                >
+                                    <FileDown className="w-5 h-5" />
+                                </button>
+                                <button
+                                    onClick={() => setPdfUrl(null)}
+                                    className="p-2.5 bg-gray-100 text-gray-500 hover:bg-gray-200 rounded-full transition-all"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex-1 bg-gray-50 relative">
+                            <iframe
+                                src={`${pdfUrl}#toolbar=0`}
+                                className="w-full h-full border-none"
+                                title="Document Viewer"
+                            />
+                        </div>
                     </div>
                 </div>
             )}

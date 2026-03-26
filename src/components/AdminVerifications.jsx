@@ -12,7 +12,7 @@ const AdminVerifications = () => {
     const [secureUrls, setSecureUrls] = useState({ idDoc: null, addressDoc: null, selfie: null });
     const [loadingUrls, setLoadingUrls] = useState(false);
     const [urlErrors, setUrlErrors] = useState({ idDoc: null, addressDoc: null, selfie: null });
-    const [zoomedImage, setZoomedImage] = useState(null); // URL of the image to zoom
+    const [zoomedMedia, setZoomedMedia] = useState(null); // { url, type: 'image' | 'pdf' }
 
 
     const fetchVerifications = async () => {
@@ -73,12 +73,10 @@ const AdminVerifications = () => {
         console.log('[KYC Debug] Target path for download:', path);
         
         try {
-            // Use download instead of createSignedUrl for better reliability with RLS
             const { data, error, status } = await supabase.storage.from('kyc_documents').download(path);
             
             if (error) {
                 console.error('[KYC Debug] Download Error:', error, 'Status:', status);
-                // Force capture of non-enumerable properties like 'message'
                 const detailedError = {
                     message: error.message,
                     status: status,
@@ -88,7 +86,6 @@ const AdminVerifications = () => {
                     code: error.code
                 };
 
-                // NEW: Get a public URL as fallback info
                 const { data: publicData } = supabase.storage.from('kyc_documents').getPublicUrl(path);
 
                 return { 
@@ -97,13 +94,19 @@ const AdminVerifications = () => {
                     error: `${error.message || 'Access Denied (CORS/RLS)'} (code: ${error.code || status || '403'})`, 
                     rawError: JSON.stringify(detailedError),
                     rawPath: path,
-                    publicUrl: publicData?.publicUrl
+                    publicUrl: publicData?.publicUrl,
+                    type: path.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image'
                 };
             }
             
             const blobUrl = URL.createObjectURL(data);
             console.log('[KYC Debug] Successfully downloaded and created blob URL');
-            return { url: blobUrl, isBlob: true, rawPath: path };
+            return { 
+                url: blobUrl, 
+                isBlob: true, 
+                rawPath: path,
+                type: data.type.includes('pdf') || path.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image'
+            };
         } catch (err) {
             console.error('[KYC Debug] Exception in getSecureUrl:', err);
             return { 
@@ -111,7 +114,8 @@ const AdminVerifications = () => {
                 isBlob: false, 
                 error: err.message || 'Exception caught', 
                 rawError: JSON.stringify(err),
-                rawPath: path 
+                rawPath: path,
+                type: path.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image'
             };
         }
     };
@@ -355,7 +359,7 @@ const AdminVerifications = () => {
                             <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><FileText className="w-4 h-4" /> ID Document ({selectedRequest.id_type})</p>
-                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.idDoc && setZoomedImage(secureUrls.idDoc.url)}>
+                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.idDoc && setZoomedMedia({ url: secureUrls.idDoc.url, type: secureUrls.idDoc.type })}>
                                         {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.idDoc && !urlErrors.idDoc ? (
                                             <>
                                                 <img 
@@ -411,7 +415,7 @@ const AdminVerifications = () => {
                                 </div>
                                 <div className="space-y-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><ImageIcon className="w-4 h-4" /> Selfie (Liveness)</p>
-                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.selfie && setZoomedImage(secureUrls.selfie.url)}>
+                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.selfie && setZoomedMedia({ url: secureUrls.selfie.url, type: secureUrls.selfie.type })}>
                                         {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.selfie && !urlErrors.selfie ? (
                                             <>
                                                 <img 
@@ -447,7 +451,7 @@ const AdminVerifications = () => {
                                 </div>
                                 <div className="space-y-2 sm:col-span-2">
                                     <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><FileText className="w-4 h-4" /> Proof of Address</p>
-                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.addressDoc && setZoomedImage(secureUrls.addressDoc.url)}>
+                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 h-64 flex flex-col items-center justify-center p-2 relative group cursor-pointer" onClick={() => secureUrls.addressDoc && setZoomedMedia({ url: secureUrls.addressDoc.url, type: secureUrls.addressDoc.type })}>
                                         {loadingUrls ? <p className="text-gray-400 text-sm">Loading secure image...</p> : secureUrls.addressDoc && !urlErrors.addressDoc ? (
                                             <>
                                                 <img 
@@ -543,17 +547,27 @@ const AdminVerifications = () => {
             )}
 
             {/* Zoom Modal */}
-            {zoomedImage && (
-                <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 animate-fade-in" onClick={() => setZoomedImage(null)}>
-                    <div className="absolute top-6 right-6 text-white cursor-pointer hover:scale-110 transition-transform bg-white/10 p-2 rounded-full">
+            {zoomedMedia && (
+                <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 animate-fade-in" onClick={() => setZoomedMedia(null)}>
+                    <div className="absolute top-6 right-6 text-white cursor-pointer hover:scale-110 transition-transform bg-white/10 p-2 rounded-full z-50">
                         <X className="w-8 h-8" />
                     </div>
-                    <img 
-                        src={zoomedImage} 
-                        alt="Zoomed document" 
-                        className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" 
-                        onClick={(e) => e.stopPropagation()} 
-                    />
+                    {zoomedMedia.type === 'pdf' ? (
+                        <div className="w-full max-w-5xl h-[85vh] bg-white rounded-2xl overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                            <iframe 
+                                src={`${zoomedMedia.url}#toolbar=0`} 
+                                className="w-full h-full border-none" 
+                                title="PDF Viewer" 
+                            />
+                        </div>
+                    ) : (
+                        <img 
+                            src={zoomedMedia.url} 
+                            alt="Zoomed document" 
+                            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" 
+                            onClick={(e) => e.stopPropagation()} 
+                        />
+                    )}
                 </div>
             )}
         </div>
