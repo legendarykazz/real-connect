@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { MapPin, Phone, Mail, ArrowLeft, Ruler, Calendar, Play, ZoomIn, FileText, Download, ExternalLink, ShieldCheck, CheckCircle2 } from 'lucide-react-native';
@@ -243,7 +244,7 @@ export default function PropertyDetailsScreen() {
                         <TouchableOpacity 
                             onPress={() => {
                                 if (property.verification_report_url) {
-                                    Linking.openURL(property.verification_report_url);
+                                    WebBrowser.openBrowserAsync(property.verification_report_url);
                                 } else {
                                     alert('Report coming soon! Our team is finalizing the official verification document for this property.');
                                 }
@@ -265,7 +266,7 @@ export default function PropertyDetailsScreen() {
                                 {property.documents.map((doc: any, index: number) => (
                                     <TouchableOpacity 
                                         key={index}
-                                        onPress={() => Linking.openURL(doc.url)}
+                                        onPress={() => WebBrowser.openBrowserAsync(doc.url)}
                                         activeOpacity={0.7}
                                         className="flex-row items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 mb-3"
                                     >
