@@ -137,13 +137,24 @@ const PropertyDetails = () => {
         if (doc.url) window.open(doc.url, '_blank');
     };
 
-    const handleDownloadDocument = (doc) => {
-        if (doc.url) {
+    const handleDownloadDocument = async (doc) => {
+        if (!doc.url) return;
+        try {
+            const response = await fetch(doc.url);
+            if (!response.ok) throw new Error('Network response was not ok');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = doc.url;
-            a.download = doc.name;
-            a.target = '_blank';
+            a.style.display = 'none';
+            a.href = url;
+            a.download = doc.name || 'document';
+            document.body.appendChild(a);
             a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (err) {
+            console.error('Download failed, opening in new tab:', err);
+            window.open(doc.url, '_blank');
         }
     };
 

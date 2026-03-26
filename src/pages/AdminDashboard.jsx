@@ -717,6 +717,7 @@ const AdminDashboard = () => {
                                                 <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Submitter</th>
                                                 <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Price</th>
                                                 <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Status</th>
+                                                <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Docs</th>
                                                 <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Availability</th>
                                                 <th className="text-left px-5 py-4 font-semibold text-gray-500 uppercase text-xs">Actions</th>
                                             </tr>
@@ -748,6 +749,26 @@ const AdminDashboard = () => {
                                                     </td>
                                                     <td className="px-5 py-4 font-bold text-brand-dark">₦{listing.price}</td>
                                                     <td className="px-5 py-4"><StatusBadge status={listing.status} /></td>
+                                                    <td className="px-5 py-4">
+                                                        {listing.document_urls?.length > 0 ? (
+                                                            <div className="flex items-center gap-1.5">
+                                                                {listing.document_urls.map((url, i) => (
+                                                                    <a
+                                                                        key={i}
+                                                                        href={url}
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                        className="text-blue-500 hover:text-blue-700 bg-blue-50 p-1.5 rounded-lg transition-colors"
+                                                                        title={`View Document ${i + 1}`}
+                                                                    >
+                                                                        <FileText className="w-4 h-4" />
+                                                                    </a>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-gray-300 text-xs">—</span>
+                                                        )}
+                                                    </td>
                                                     <td className="px-5 py-4">
                                                         {listing.status === 'approved' ? (
                                                             <select

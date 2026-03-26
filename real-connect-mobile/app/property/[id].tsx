@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { MapPin, Phone, Mail, ArrowLeft, Ruler, Calendar, Play, ZoomIn } from 'lucide-react-native';
+import { MapPin, Phone, Mail, ArrowLeft, Ruler, Calendar, Play, ZoomIn, FileText, Download, ExternalLink } from 'lucide-react-native';
 import MapView, { Marker } from 'react-native-maps';
 import MediaLightbox from '../../components/MediaLightbox';
 
@@ -47,7 +47,19 @@ export default function PropertyDetailsScreen() {
                 data.video_urls.forEach((url: string) => allMedia.push({ url, type: 'video' }));
             }
             
+            
             setLightboxMedia(allMedia);
+            
+            // Prepare documents
+            if (data.document_urls && data.document_urls.length > 0) {
+                const docs = data.document_urls.filter(Boolean).map((url: string, i: number) => {
+                    const filename = decodeURIComponent(url.split('/').pop()?.split('?')[0] || '');
+                    const ext = filename.split('.').pop()?.toUpperCase() || 'PDF';
+                    const cleanName = filename.replace(/^\d+_[a-z0-9]+\./, '').replace(/\.[^.]+$/, '') || `Document ${i + 1}`;
+                    return { name: cleanName, type: ext, url };
+                });
+                setProperty((prev: any) => ({ ...prev, documents: docs }));
+            }
         } catch (err) {
             console.error(err);
         } finally {
@@ -208,6 +220,37 @@ export default function PropertyDetailsScreen() {
                                     );
                                 })}
                             </ScrollView>
+                        </View>
+                    )}
+                    
+                    {/* Documents */}
+                    {property.documents && property.documents.length > 0 && (
+                        <View className="mb-8 p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
+                            <Text className="text-lg font-bold text-brand-dark mb-4">Property Documents</Text>
+                            <View className="space-y-3">
+                                {property.documents.map((doc: any, index: number) => (
+                                    <TouchableOpacity 
+                                        key={index}
+                                        onPress={() => Linking.openURL(doc.url)}
+                                        activeOpacity={0.7}
+                                        className="flex-row items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 mb-3"
+                                    >
+                                        <View className="flex-row items-center flex-1">
+                                            <View className="bg-blue-100 p-2 rounded-lg mr-4">
+                                                <FileText color="#3b82f6" size={20} />
+                                            </View>
+                                            <View className="flex-1">
+                                                <Text className="font-bold text-brand-dark text-sm" numberOfLines={1}>{doc.name}</Text>
+                                                <Text className="text-xs text-gray-400">{doc.type}</Text>
+                                            </View>
+                                        </View>
+                                        <View className="bg-white p-2 rounded-lg shadow-sm">
+                                            <ExternalLink color="#10b981" size={18} />
+                                        </View>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                            <Text className="text-[10px] text-gray-400 text-center mt-2 italic">Tap to view or download a document</Text>
                         </View>
                     )}
                 </View>

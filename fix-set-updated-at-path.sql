@@ -13,7 +13,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql 
 SET search_path = public;
-
 -- Documentation comment
 COMMENT ON FUNCTION public.set_updated_at() 
 IS 'Helper function to automatically update the updated_at timestamp with a fixed search_path.';
