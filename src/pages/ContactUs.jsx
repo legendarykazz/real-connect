@@ -94,7 +94,7 @@ const ContactUs = () => {
                                     </div>
                                     <div>
                                         <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Call Us</p>
-                                        <p className="text-lg font-bold text-brand-dark">+234 812 383 1634</p>
+                                        <a href="tel:+2348123831634" className="text-lg font-bold text-brand-dark hover:text-brand-green transition-colors">+234 812 383 1634</a>
                                     </div>
                                 </div>
 
@@ -104,7 +104,7 @@ const ContactUs = () => {
                                     </div>
                                     <div className="break-all">
                                         <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Email Us</p>
-                                        <p className="text-lg font-bold text-brand-dark">realconnectpropertyhub@gmail.com</p>
+                                        <a href="mailto:realconnectpropertyhub@gmail.com" className="text-lg font-bold text-brand-dark hover:text-brand-green transition-colors">realconnectpropertyhub@gmail.com</a>
                                     </div>
                                 </div>
 

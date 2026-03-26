@@ -27,13 +27,13 @@ const Footer = () => {
                         <h3 className="text-lg font-bold mb-6">Contact RealConnect</h3>
                         <p className="text-gray-400 mb-6">Want your land displayed? Have questions about a property? Reach out to us — we're ready to help.</p>
                         <ul className="space-y-4">
-                            <li className="flex items-center text-gray-300 hover:text-brand-green transition-colors cursor-pointer">
+                            <li className="flex items-center text-gray-300 hover:text-brand-green transition-colors">
                                 <Mail className="w-5 h-5 mr-3 shrink-0" />
-                                <span>realconnectpropertyhub@gmail.com</span>
+                                <a href="mailto:realconnectpropertyhub@gmail.com">realconnectpropertyhub@gmail.com</a>
                             </li>
-                            <li className="flex items-center text-gray-300 hover:text-brand-green transition-colors cursor-pointer">
+                            <li className="flex items-center text-gray-300 hover:text-brand-green transition-colors">
                                 <Phone className="w-5 h-5 mr-3 shrink-0" />
-                                <span>+2348123831634</span>
+                                <a href="tel:+2348123831634">+2348123831634</a>
                             </li>
                             <li className="flex items-center text-gray-300">
                                 <MapPin className="w-5 h-5 mr-3 shrink-0" />
