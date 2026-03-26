@@ -462,35 +462,6 @@ const PropertyDetails = () => {
                                     </div>
                                 )}
 
-                                {/* Documents */}
-                                {property.documents.length > 0 && (
-                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                                        <h2 className="text-xl font-bold mb-5">Documents</h2>
-                                        <div className="space-y-3">
-                                            {property.documents.map((doc, idx) => (
-                                                <div key={idx} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors">
-                                                    <div className="flex items-center">
-                                                        <div className="bg-gray-100 p-2 rounded-lg mr-4">
-                                                            <FileText className="w-5 h-5 text-gray-500" />
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="font-semibold text-brand-dark text-sm">{doc.name}</h4>
-                                                            <p className="text-xs text-gray-400">{doc.type}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex space-x-2">
-                                                        <button onClick={() => handleViewDocument(doc)} className="p-2 text-brand-light-blue hover:bg-blue-50 rounded-lg transition-colors" title="View">
-                                                            <ExternalLink className="w-5 h-5" />
-                                                        </button>
-                                                        <button onClick={() => handleDownloadDocument(doc)} className="p-2 text-brand-green hover:bg-green-50 rounded-lg transition-colors" title="Download">
-                                                            <Download className="w-5 h-5" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
 
                             {/* Right sidebar */}
