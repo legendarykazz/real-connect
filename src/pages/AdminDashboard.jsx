@@ -294,6 +294,7 @@ const AdminDashboard = () => {
     // ---- REALTIME SUBSCRIPTION ----
     useEffect(() => {
         fetchListings();
+        fetchUsers(); // Fetch users on mount to get registration emails for listings
 
         // Fetch Verifications count
         const fetchPendingVerificationsCount = async () => {
@@ -342,7 +343,7 @@ const AdminDashboard = () => {
     }, []);
 
     useEffect(() => {
-        if (activeTab === 'users') fetchUsers();
+        // if (activeTab === 'users') fetchUsers(); // Already fetched on mount
         if (activeTab === 'listings') setBellAlerts(0);
         if (activeTab === 'inquiries') {
             fetchMessages();
@@ -819,7 +820,20 @@ const AdminDashboard = () => {
                                                     </td>
                                                     <td className="px-5 py-4">
                                                         <p className="font-medium text-sm">{listing.first_name} {listing.last_name}</p>
-                                                        <p className="text-xs text-gray-400">{listing.email}</p>
+                                                        <p className="text-xs text-gray-400 group flex flex-col">
+                                                            <span>{listing.email}</span>
+                                                            {(() => {
+                                                                const regUser = users.find(u => u.id === listing.user_id);
+                                                                if (regUser && regUser.email && regUser.email !== listing.email) {
+                                                                    return (
+                                                                        <span className="text-[10px] text-brand-green font-bold mt-1 bg-green-50 px-1.5 py-0.5 rounded border border-green-100 w-fit" title="Registered account email">
+                                                                            🔐 {regUser.email} (Reg)
+                                                                        </span>
+                                                                    );
+                                                                }
+                                                                return null;
+                                                            })()}
+                                                        </p>
                                                     </td>
                                                     <td className="px-5 py-4 font-bold text-brand-dark">₦{listing.price}</td>
                                                     <td className="px-5 py-4"><StatusBadge status={listing.status} /></td>
@@ -1370,8 +1384,27 @@ const AdminDashboard = () => {
                                         <a href={`mailto:${selectedListing.email}`}
                                             className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 hover:bg-blue-50 transition-colors group">
                                             <Mail className="w-4 h-4 text-gray-400 group-hover:text-blue-500" />
-                                            <span className="text-sm text-gray-700 group-hover:text-blue-600">{selectedListing.email}</span>
+                                            <div className="flex flex-col">
+                                                <span className="text-sm text-gray-700 group-hover:text-blue-600">{selectedListing.email}</span>
+                                                <span className="text-[10px] text-gray-400">Listing contact</span>
+                                            </div>
                                         </a>
+
+                                        {(() => {
+                                            const regUser = users.find(u => u.id === selectedListing.user_id);
+                                            if (regUser && regUser.email && regUser.email !== selectedListing.email) {
+                                                return (
+                                                    <div className="flex items-center gap-3 bg-green-50 border border-green-100 rounded-xl px-4 py-3">
+                                                        <Shield className="w-4 h-4 text-brand-green" />
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-bold text-brand-green">{regUser.email}</span>
+                                                            <span className="text-[10px] text-brand-green/70 font-medium">Verified registration email</span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
                                         {selectedListing.phone && (
                                             <a href={`tel:${selectedListing.phone}`}
                                                 className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 hover:bg-green-50 transition-colors group">

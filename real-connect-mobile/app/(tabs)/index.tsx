@@ -175,11 +175,11 @@ export default function BrowseScreen() {
                   onValueChange={(itemValue) => setPropertyType(itemValue)}
                   style={{ height: 50, width: '100%' }}
                 >
-                  <Picker.Item label="All Types" value="All" />
-                  <Picker.Item label="Residential" value="Residential" />
-                  <Picker.Item label="Commercial" value="Commercial" />
-                  <Picker.Item label="Agricultural" value="Agricultural" />
-                  <Picker.Item label="Mixed Use" value="Mixed Use" />
+                  <Picker.Item label="All Types" value="All" color="#0f172a" />
+                  <Picker.Item label="Residential" value="Residential" color="#0f172a" />
+                  <Picker.Item label="Commercial" value="Commercial" color="#0f172a" />
+                  <Picker.Item label="Agricultural" value="Agricultural" color="#0f172a" />
+                  <Picker.Item label="Mixed Use" value="Mixed Use" color="#0f172a" />
                 </Picker>
               </View>
             </View>
@@ -192,7 +192,7 @@ export default function BrowseScreen() {
                   placeholder="e.g. 1M"
                   value={priceMin}
                   onChangeText={setPriceMin}
-                  className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm"
+                  className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-brand-dark"
                 />
               </View>
               <View className="flex-1 space-y-1.5">
@@ -202,7 +202,7 @@ export default function BrowseScreen() {
                   placeholder="e.g. 50M"
                   value={priceMax}
                   onChangeText={setPriceMax}
-                  className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm"
+                  className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-brand-dark"
                 />
               </View>
             </View>

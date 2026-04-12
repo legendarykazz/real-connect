@@ -6,6 +6,13 @@ import { supabase } from '../../lib/supabase';
 import { MapPin, Phone, Mail, ArrowLeft, Ruler, Calendar, Play, ZoomIn, FileText, Download, ExternalLink, ShieldCheck, CheckCircle2 } from 'lucide-react-native';
 import MapView, { Marker } from 'react-native-maps';
 import MediaLightbox from '../../components/MediaLightbox';
+import { MessageCircle } from 'lucide-react-native';
+
+const REALCONNECT_CONTACT = {
+    phone: '+2348123831634',
+    whatsapp: '2348123831634', // No + for WhatsApp URL
+    email: 'realconnectpropertyhub@gmail.com'
+};
 
 export default function PropertyDetailsScreen() {
     const { id } = useLocalSearchParams();
@@ -37,17 +44,23 @@ export default function PropertyDetailsScreen() {
             const allMedia: { url: string; type: 'image' | 'video' }[] = [];
             
             // Add images
-            if (data.image_urls && data.image_urls.length > 0) {
-                data.image_urls.forEach((url: string) => allMedia.push({ url, type: 'image' }));
+            const images = (data.image_urls || []).filter(Boolean);
+            if (images.length > 0) {
+                images.forEach((url: string) => allMedia.push({ url, type: 'image' }));
             } else if (data.image_url) {
                 allMedia.push({ url: data.image_url, type: 'image' });
             }
             
             // Add videos
-            if (data.video_urls && data.video_urls.length > 0) {
-                data.video_urls.forEach((url: string) => allMedia.push({ url, type: 'video' }));
+            const videos = (data.video_urls || []).filter(Boolean);
+            if (videos.length > 0) {
+                videos.forEach((url: string) => allMedia.push({ url, type: 'video' }));
             }
             
+            // Fallback: if no images but has videos, add a placeholder for the header
+            if (allMedia.length === 0) {
+                allMedia.push({ url: 'https://via.placeholder.com/800x600?text=No+Media', type: 'image' });
+            }
             
             setLightboxMedia(allMedia);
             
@@ -86,33 +99,60 @@ export default function PropertyDetailsScreen() {
         <View className="flex-1 bg-brand-light">
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
                 {/* Header Image */}
-                <TouchableOpacity 
-                    activeOpacity={0.9} 
-                    onPress={() => openLightbox(0)}
-                    className="relative w-full h-80 bg-gray-200"
-                >
-                    <Image
-                        source={{ uri: property.image_urls?.[0] || property.image_url || 'https://via.placeholder.com/800x600?text=No+Image' }}
+                <View className="relative w-full h-80 bg-gray-200">
+                    <TouchableOpacity 
+                        activeOpacity={0.9} 
+                        onPress={() => openLightbox(lightboxIndex)}
                         className="w-full h-full"
-                        resizeMode="cover"
-                    />
-                    <View className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 hover:opacity-100">
-                        <ZoomIn color="white" size={32} opacity={0.6} />
-                    </View>
-                    {property.availability === 'sold' && (
-                        <View className="absolute inset-0 bg-black/30 items-center justify-center">
-                            <View className="bg-red-600 px-6 py-3 rounded-2xl border-4 border-white transform -rotate-12 shadow-2xl">
-                                <Text className="text-white font-black text-2xl tracking-widest">SOLD</Text>
-                            </View>
+                    >
+                        <Image
+                            source={{ uri: lightboxMedia[lightboxIndex]?.url || property.image_url || 'https://via.placeholder.com/800x600?text=No+Image' }}
+                            className="w-full h-full"
+                            resizeMode="cover"
+                        />
+                        <View className="absolute inset-0 bg-black/5 items-center justify-center">
+                            <ZoomIn color="white" size={32} opacity={0.4} />
                         </View>
-                    )}
+                        {property.availability === 'sold' && (
+                            <View className="absolute inset-0 bg-black/30 items-center justify-center">
+                                <View className="bg-red-600 px-6 py-3 rounded-2xl border-4 border-white transform -rotate-12 shadow-2xl">
+                                    <Text className="text-white font-black text-2xl tracking-widest">SOLD</Text>
+                                </View>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+
                     <TouchableOpacity
                         onPress={() => router.back()}
                         className="absolute top-12 left-4 bg-black/50 p-3 rounded-full"
                     >
                         <ArrowLeft color="white" size={24} />
                     </TouchableOpacity>
-                </TouchableOpacity>
+                </View>
+
+                {/* Thumbnail Strip */}
+                {lightboxMedia.length > 1 && (
+                    <View className="bg-white border-b border-gray-100 py-3">
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-4">
+                            {lightboxMedia.map((item, index) => (
+                                <TouchableOpacity 
+                                    key={index}
+                                    onPress={() => setLightboxIndex(index)}
+                                    className={`mr-3 rounded-xl overflow-hidden border-2 ${lightboxIndex === index ? 'border-brand-green' : 'border-transparent'}`}
+                                >
+                                    <View className="relative w-16 h-16 bg-gray-100">
+                                        <Image source={{ uri: item.url }} className="w-full h-full" resizeMode="cover" />
+                                        {item.type === 'video' && (
+                                            <View className="absolute inset-0 bg-black/30 items-center justify-center">
+                                                <Play color="white" size={16} />
+                                            </View>
+                                        )}
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
 
                 <View className="p-6">
                     {/* Title & Price */}
@@ -219,45 +259,7 @@ export default function PropertyDetailsScreen() {
                         </View>
                     )}
 
-                    {/* Media Gallery Grid */}
-                    {property.image_urls && property.image_urls.length > 1 && (
-                        <View className="mb-8">
-                            <Text className="text-lg font-bold text-brand-dark mb-3">Gallery ({property.image_urls.length})</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-                                {property.image_urls.map((url: string, index: number) => (
-                                    <TouchableOpacity 
-                                        key={index} 
-                                        onPress={() => openLightbox(index)}
-                                        activeOpacity={0.8}
-                                    >
-                                        <Image source={{ uri: url }} className="w-32 h-32 rounded-xl mr-3 bg-gray-200" />
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        </View>
-                    )}
-
-                    {/* Videos */}
-                    {property.video_urls && property.video_urls.length > 0 && (
-                        <View className="mb-8">
-                            <Text className="text-lg font-bold text-brand-dark mb-3">Videos ({property.video_urls.length})</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-                                {property.video_urls.map((url: string, index: number) => {
-                                    const videoIndex = (property.image_urls?.length || (property.image_url ? 1 : 0)) + index;
-                                    return (
-                                        <TouchableOpacity
-                                            key={index}
-                                            onPress={() => openLightbox(videoIndex)}
-                                            className="w-48 h-32 rounded-xl mr-3 bg-black justify-center items-center"
-                                        >
-                                            <Play color="white" size={32} opacity={0.8} />
-                                            <Text className="text-white font-bold mt-2 text-center px-2">Watch Video {index + 1}</Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </ScrollView>
-                        </View>
-                    )}
+                    {/* Media Gallery Grid - Removed as it's now in the header thumbnail strip */}
 
                 </View>
             </ScrollView>
@@ -271,20 +273,37 @@ export default function PropertyDetailsScreen() {
             />
 
             {/* Bottom Action Bar */}
-            <View className="bg-white px-6 py-4 border-t border-gray-100 flex-row justify-between items-center shadow-lg pb-10">
-                <TouchableOpacity
-                    onPress={() => Linking.openURL(`tel:+2348123831634`)}
-                    className="bg-brand-dark flex-row items-center justify-center flex-1 py-4 rounded-xl mr-3"
-                >
-                    <Phone color="white" size={20} />
-                    <Text className="text-white font-bold text-lg ml-2">Call Agent</Text>
-                </TouchableOpacity>
+            <View className="bg-white px-6 py-4 border-t border-gray-100 shadow-lg pb-10">
+                <View className="flex-row mb-3">
+                    <TouchableOpacity
+                        onPress={() => Linking.openURL(`tel:${REALCONNECT_CONTACT.phone}`)}
+                        className="bg-brand-dark flex-row items-center justify-center flex-1 py-4 rounded-xl mr-3"
+                    >
+                        <Phone color="white" size={20} />
+                        <Text className="text-white font-bold text-lg ml-2">Call Now</Text>
+                    </TouchableOpacity>
 
+                    <TouchableOpacity
+                        onPress={() => {
+                            const msg = encodeURIComponent(`Hello RealConnect, I'm interested in the property in ${property.location} (₦${parseInt(String(property.price || 0).replace(/\D/g, ''), 10).toLocaleString()}).`);
+                            Linking.openURL(`https://wa.me/${REALCONNECT_CONTACT.whatsapp}?text=${msg}`);
+                        }}
+                        className="bg-brand-green flex-row items-center justify-center flex-1 py-4 rounded-xl"
+                    >
+                        <MessageCircle color="white" size={20} />
+                        <Text className="text-white font-bold text-lg ml-2">WhatsApp</Text>
+                    </TouchableOpacity>
+                </View>
+                
                 <TouchableOpacity
-                    onPress={() => Linking.openURL(`mailto:realconnectpropertyhub@gmail.com`)}
-                    className="bg-brand-light-blue p-4 rounded-xl"
+                    onPress={() => {
+                        const msg = encodeURIComponent(`Hello RealConnect, I'd like to schedule an inspection for the property in ${property.location}.`);
+                        Linking.openURL(`https://wa.me/${REALCONNECT_CONTACT.whatsapp}?text=${msg}`);
+                    }}
+                    className="w-full bg-white border-2 border-brand-light-blue py-3 rounded-xl items-center flex-row justify-center"
                 >
-                    <Mail color="#0f172a" size={24} />
+                    <Calendar color="#3b82f6" size={18} />
+                    <Text className="text-brand-light-blue font-bold ml-2">Schedule Inspection</Text>
                 </TouchableOpacity>
             </View>
         </View>
