@@ -34,12 +34,10 @@ const compressImage = (file, maxWidth = 1200, quality = 0.8) => {
 
             canvas.toBlob(
                 (blob) => {
-                    // Create a new File from the compressed blob
-                    const compressedFile = new File([blob], file.name, {
-                        type: 'image/jpeg',
-                        lastModified: Date.now(),
-                    });
-                    resolve(compressedFile);
+                    // Instead of creating a new File object (which can fail on some mobile browsers),
+                    // we return the Blob directly and attach a name property to it.
+                    blob.name = file.name || `image_${Date.now()}.jpg`;
+                    resolve(blob);
                 },
                 'image/jpeg',
                 quality
@@ -305,7 +303,11 @@ const ListProperty = () => {
                 
                 console.log(`Uploading ${prefix}:`, { name: processedFile.name, type: processedFile.type, size: processedFile.size });
                 
-                const { error: uploadError } = await supabase.storage.from('kyc_documents').upload(path, processedFile);
+                const { error: uploadError } = await supabase.storage.from('kyc_documents').upload(path, processedFile, {
+                    cacheControl: '3600',
+                    upsert: false,
+                    contentType: processedFile.type || 'application/octet-stream' // Required to prevent 'Failed to fetch' on some mobile browsers
+                });
                 if (uploadError) {
                     console.error(`${prefix} upload error details:`, uploadError);
                     throw new Error(`${prefix} upload failed: ` + uploadError.message);
@@ -370,7 +372,10 @@ const ListProperty = () => {
         const uploadFile = async (file, folder) => {
             const ext = file.name.split('.').pop();
             const path = `${user.id}/${folder}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-            const { error } = await supabase.storage.from('property-images').upload(path, file, { upsert: false });
+            const { error } = await supabase.storage.from('property-images').upload(path, file, { 
+                upsert: false,
+                contentType: file.type || 'application/octet-stream'
+            });
             if (error) throw new Error('Upload failed: ' + error.message);
             return supabase.storage.from('property-images').getPublicUrl(path).data.publicUrl;
         };
