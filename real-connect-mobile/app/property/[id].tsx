@@ -97,7 +97,9 @@ export default function PropertyDetailsScreen() {
 
     const lat = property.latitude ? parseFloat(property.latitude) : null;
     const lng = property.longitude ? parseFloat(property.longitude) : null;
-    const hasValidCoords = lat !== null && !isNaN(lat) && lng !== null && !isNaN(lng);
+    const isValidLat = lat !== null && !isNaN(lat) && lat >= -90 && lat <= 90;
+    const isValidLng = lng !== null && !isNaN(lng) && lng >= -180 && lng <= 180;
+    const hasValidCoords = isValidLat && isValidLng;
 
     return (
         <View className="flex-1 bg-brand-light">

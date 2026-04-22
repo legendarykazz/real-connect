@@ -12,16 +12,18 @@ export const unstable_settings = {
 };
 
 import { useEffect } from 'react';
-import { useRouter, useSegments } from 'expo-router';
+import { useRouter, useSegments, useRootNavigationState } from 'expo-router';
 
 // Make sure to add this inside the file:
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const navigationState = useRootNavigationState();
 
   useEffect(() => {
     if (loading) return;
+    if (!navigationState?.key) return; // Wait for navigation to mount
 
     const inAuthGroup = segments[0] === 'login' || segments[0] === 'forgot-password';
 
@@ -32,7 +34,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       // Redirect to tabs if user is authenticated but trying to access login
       router.replace('/(tabs)');
     }
-  }, [session, loading, segments, router]);
+  }, [session, loading, segments, router, navigationState?.key]);
 
   return <>{children}</>;
 }
