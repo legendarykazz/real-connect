@@ -178,6 +178,8 @@ const AdminDashboard = () => {
             setUsers(formattedUsers);
         } catch (err) {
             console.error('Error fetching users:', err);
+            // Display error prominently
+            setToastMsg('Failed to load users: ' + (err.message || 'Please ensure secure-admin-users.sql was run in Supabase.'));
         } finally {
             setUsersLoading(false);
         }

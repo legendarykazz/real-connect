@@ -95,15 +95,12 @@ export default function PropertyDetailsScreen() {
         );
     }
 
+    const lat = property.latitude ? parseFloat(property.latitude) : null;
+    const lng = property.longitude ? parseFloat(property.longitude) : null;
+    const hasValidCoords = lat !== null && !isNaN(lat) && lng !== null && !isNaN(lng);
+
     return (
         <View className="flex-1 bg-brand-light">
-            {/* Safe coordination parsing before render */}
-            {(() => {
-                const lat = property.latitude ? parseFloat(property.latitude) : null;
-                const lng = property.longitude ? parseFloat(property.longitude) : null;
-                const hasValidCoords = lat !== null && !isNaN(lat) && lng !== null && !isNaN(lng);
-                
-                return (
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
                 {/* Header Image */}
                 <View className="relative w-full h-80 bg-gray-200">
@@ -312,10 +309,7 @@ export default function PropertyDetailsScreen() {
                     <Calendar color="#3b82f6" size={18} />
                     <Text className="text-brand-light-blue font-bold ml-2">Schedule Inspection</Text>
                 </TouchableOpacity>
-                </TouchableOpacity>
             </View>
-            );
-            })()}
         </View>
     );
 }
