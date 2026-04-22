@@ -97,6 +97,13 @@ export default function PropertyDetailsScreen() {
 
     return (
         <View className="flex-1 bg-brand-light">
+            {/* Safe coordination parsing before render */}
+            {(() => {
+                const lat = property.latitude ? parseFloat(property.latitude) : null;
+                const lng = property.longitude ? parseFloat(property.longitude) : null;
+                const hasValidCoords = lat !== null && !isNaN(lat) && lng !== null && !isNaN(lng);
+                
+                return (
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
                 {/* Header Image */}
                 <View className="relative w-full h-80 bg-gray-200">
@@ -233,15 +240,15 @@ export default function PropertyDetailsScreen() {
                     </View>
 
                     {/* Map Location */}
-                    {property.latitude && property.longitude && (
+                    {hasValidCoords && (
                         <View className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-8">
                             <Text className="text-lg font-bold text-brand-dark mb-3">Map Location</Text>
                             <View className="h-48 rounded-xl overflow-hidden border border-gray-200 pointer-events-none">
                                 <MapView
                                     style={{ flex: 1 }}
                                     initialRegion={{
-                                        latitude: property.latitude,
-                                        longitude: property.longitude,
+                                        latitude: lat,
+                                        longitude: lng,
                                         latitudeDelta: 0.05,
                                         longitudeDelta: 0.05,
                                     }}
@@ -251,7 +258,7 @@ export default function PropertyDetailsScreen() {
                                     zoomEnabled={false}
                                 >
                                     <Marker
-                                        coordinate={{ latitude: property.latitude, longitude: property.longitude }}
+                                        coordinate={{ latitude: lat, longitude: lng }}
                                         title={property.location}
                                     />
                                 </MapView>
@@ -305,7 +312,10 @@ export default function PropertyDetailsScreen() {
                     <Calendar color="#3b82f6" size={18} />
                     <Text className="text-brand-light-blue font-bold ml-2">Schedule Inspection</Text>
                 </TouchableOpacity>
+                </TouchableOpacity>
             </View>
+            );
+            })()}
         </View>
     );
 }

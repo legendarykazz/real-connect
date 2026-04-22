@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate, Link } from 'react-router-dom';
-import { LogIn, UserPlus, Lock, Mail, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { LogIn, UserPlus, Lock, Mail, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
     const [isLogin, setIsLogin] = useState(true);
@@ -9,6 +9,7 @@ const Login = () => {
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const [error, setError] = useState(null);
@@ -51,25 +52,21 @@ const Login = () => {
 
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
-            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                <Link to="/" className="flex justify-center mb-6">
-                    <img src="/logo.png" alt="RealConnect Logo" className="h-12 w-auto object-contain" />
-                </Link>
-                <h2 className="text-center text-3xl font-extrabold text-brand-dark">
-                    {isLogin ? 'Sign in to your account' : 'Create a new account'}
-                </h2>
-                <p className="mt-2 text-center text-sm text-gray-500">
-                    {isLogin ? "Don't have an account? " : "Already have an account? "}
-                    <button onClick={() => { setIsLogin(!isLogin); setError(null); setSuccessMessage(null); }} className="text-brand-light-blue font-semibold hover:underline">
-                        {isLogin ? 'Sign up free' : 'Sign in'}
-                    </button>
-                </p>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30 flex flex-col py-12 sm:px-6 lg:px-8 font-sans overflow-y-auto">
+            <div className="m-auto w-full">
+                <div className="sm:mx-auto sm:w-full sm:max-w-md">
+                <div className="mb-10 items-center text-center">
+                    <Link to="/" className="inline-block">
+                        <h1 className="text-4xl font-extrabold text-brand-dark mb-2 hover:opacity-80 transition-opacity">RealConnect</h1>
+                    </Link>
+                    <p className="text-gray-500 text-base">
+                        {isLogin ? 'Welcome back! Log in to continue.' : 'Create an account to get started.'}
+                    </p>
+                </div>
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-white py-8 px-6 shadow-xl sm:rounded-3xl sm:px-10 border border-gray-100 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-brand-light-blue to-brand-green" />
+                <div className="bg-white py-8 px-6 shadow-xl sm:rounded-3xl sm:px-10 border border-gray-100 mb-6">
 
                     {/* Error message */}
                     {error && (
@@ -98,20 +95,20 @@ const Login = () => {
                                 {!isLogin && (
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">First Name</label>
                                             <input
                                                 required type="text" value={firstName}
                                                 onChange={(e) => setFirstName(e.target.value)}
-                                                className="block w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all"
+                                                className="block w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all"
                                                 placeholder="John"
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">Last Name</label>
                                             <input
                                                 required type="text" value={lastName}
                                                 onChange={(e) => setLastName(e.target.value)}
-                                                className="block w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all"
+                                                className="block w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all"
                                                 placeholder="Doe"
                                             />
                                         </div>
@@ -119,57 +116,59 @@ const Login = () => {
                                 )}
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email address</label>
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <Mail className="h-5 w-5 text-gray-400" />
-                                        </div>
-                                        <input
-                                            required type="email" value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            className="block w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all"
-                                            placeholder="you@example.com"
-                                        />
-                                    </div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">Email</label>
+                                    <input
+                                        required type="email" value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="block w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all"
+                                        placeholder="you@example.com"
+                                    />
                                 </div>
 
                                 <div>
                                     <div className="flex justify-between items-center mb-1">
-                                        <label className="block text-sm font-medium text-gray-700">Password</label>
+                                        <label className="block text-sm font-bold text-gray-700 ml-1">Password</label>
                                         {isLogin && (
-                                            <Link to="/forgot-password" className="text-xs font-semibold text-brand-green hover:underline">
-                                                Forgot password?
+                                            <Link to="/forgot-password" className="text-sm font-bold text-brand-green hover:underline mr-1">
+                                                Forgot?
                                             </Link>
                                         )}
                                     </div>
                                     <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <Lock className="h-5 w-5 text-gray-400" />
-                                        </div>
                                         <input
-                                            required type="password" value={password}
+                                            required type={showPassword ? "text" : "password"} value={password}
                                             onChange={(e) => setPassword(e.target.value)}
-                                            className="block w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all"
+                                            className="block w-full px-4 pr-10 py-3 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all"
                                             placeholder="••••••••"
                                             minLength={6}
                                         />
+                                        <button
+                                            type="button"
+                                            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                        >
+                                            {showPassword ? (
+                                                <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" />
+                                            ) : (
+                                                <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" />
+                                            )}
+                                        </button>
                                     </div>
                                     {!isLogin && (
-                                        <p className="text-xs text-gray-400 mt-1">Minimum 6 characters</p>
+                                        <p className="text-xs text-gray-400 mt-1 ml-1">Minimum 6 characters</p>
                                     )}
                                 </div>
 
                                 <button
                                     disabled={loading}
                                     type="submit"
-                                    className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl shadow-sm text-sm font-bold text-white bg-brand-green hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-green transition-colors disabled:opacity-70"
+                                    className="w-full flex justify-center items-center gap-2 py-4 px-4 rounded-xl shadow-sm text-lg font-bold text-white bg-brand-green hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-green transition-colors disabled:opacity-70"
                                 >
                                     {loading ? (
-                                        <span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Processing...</span>
+                                        <span className="flex items-center gap-2"><svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Processing...</span>
                                     ) : (
                                         <>
-                                            {isLogin ? <LogIn className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                                            {isLogin ? 'Sign In' : 'Create Account & Verify Email'}
+                                            {isLogin ? 'Log In' : 'Sign Up'}
                                         </>
                                     )}
                                 </button>
@@ -183,6 +182,19 @@ const Login = () => {
                         </>
                     )}
                 </div>
+
+                {/* Toggle mode below the card */}
+                {!successMessage && (
+                    <div className="mt-2 text-center">
+                        <button onClick={() => { setIsLogin(!isLogin); setError(null); setSuccessMessage(null); }} className="text-gray-600 font-medium hover:opacity-80 transition-opacity">
+                            {isLogin ? "Don't have an account? " : "Already have an account? "}
+                            <span className="text-brand-green font-bold">
+                                {isLogin ? 'Sign Up' : 'Log In'}
+                            </span>
+                        </button>
+                    </div>
+                )}
+            </div>
             </div>
         </div>
     );

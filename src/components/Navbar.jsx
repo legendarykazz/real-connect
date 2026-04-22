@@ -26,7 +26,7 @@ const Navbar = () => {
     // Close notifications click outside
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (notifRef.current && !notifRef.current.contains(event.target)) {
+            if (!event.target.closest('.notif-container')) {
                 setIsNotificationsOpen(false);
             }
         };
@@ -166,7 +166,7 @@ const Navbar = () => {
                                 <Link to="/list-property" className="text-brand-dark hover:text-brand-green font-medium transition-colors">List Property</Link>
 
                                 {/* Notification Bell */}
-                                <div className="relative" ref={notifRef}>
+                                <div className="relative notif-container" ref={notifRef}>
                                     <button
                                         onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
                                         className="relative p-2 text-gray-500 hover:text-brand-green transition-colors rounded-full hover:bg-gray-100"
@@ -253,7 +253,7 @@ const Navbar = () => {
                         {user && (
                             <button
                                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                                className="relative p-2 text-gray-500 hover:text-brand-green transition-colors"
+                                className="relative p-2 text-gray-500 hover:text-brand-green transition-colors notif-container"
                             >
                                 <Bell className="w-6 h-6" />
                                 {unreadCount > 0 && (
@@ -264,7 +264,7 @@ const Navbar = () => {
                             </button>
                         )}
 
-                        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-brand-dark hover:text-brand-green p-2 transition-colors">
+                        <button onClick={() => { setIsMobileMenuOpen(!isMobileMenuOpen); setIsNotificationsOpen(false); }} className="text-brand-dark hover:text-brand-green p-2 transition-colors">
                             {isMobileMenuOpen ? (
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -280,7 +280,7 @@ const Navbar = () => {
 
                 {/* Mobile Notification Dropdown */}
                 {user && isNotificationsOpen && (
-                    <div className="md:hidden border-t border-gray-100 bg-white">
+                    <div className="md:hidden border-t border-gray-100 bg-white notif-container">
                         <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
                             <h3 className="font-bold text-gray-800">Notifications</h3>
                             {unreadCount > 0 && (

@@ -163,6 +163,7 @@ const ListProperty = () => {
     const [showKYCForm, setShowKYCForm] = useState(false);
     const [kycData, setKycData] = useState({
         fullName: '',
+        phone: '',
         address: '',
         idType: 'National ID / NIN',
         idNumber: ''
@@ -336,7 +337,7 @@ const ListProperty = () => {
                     full_name: kycData.fullName,
                     address: kycData.address,
                     email: user.email,
-                    phone: user.user_metadata?.phone || '',
+                    phone: kycData.phone || user.user_metadata?.phone || '',
                     id_type: kycData.idType,
                     id_number: kycData.idNumber,
                     id_document_url: idDocUrl,
@@ -540,6 +541,10 @@ const ListProperty = () => {
                                     <input required type="text" name="fullName" value={kycData.fullName} onChange={handleKycChange} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-green" placeholder="John Doe" />
                                 </div>
                                 <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Phone Number *</label>
+                                    <input required type="tel" name="phone" value={kycData.phone} onChange={handleKycChange} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-green" placeholder="+234 800 000 0000" />
+                                </div>
+                                <div className="md:col-span-2">
                                     <label className="block text-sm font-bold text-gray-700 mb-1">Residential Address *</label>
                                     <input required type="text" name="address" value={kycData.address} onChange={handleKycChange} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-green" placeholder="123 Main St..." />
                                 </div>
